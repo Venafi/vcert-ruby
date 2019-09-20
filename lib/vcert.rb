@@ -1,34 +1,21 @@
 require 'net/https'
 
 
-module Vcert
-  class CloudConnection
+class Vcert
+
+  class Connection
+
     def initialize(url, token)
-      @url = url
-      @token = token
+      @conn = CloudConnection.new url, token
     end
 
-    def post
-      uri = URI.parse("https://venafi.com/")
-      request = Net::HTTP.new(uri.host, uri.port)
-      request.use_ssl = true
-      request.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      response = request.get("/")
-      put response.body.size
-    end
-
-    def request()
-
-    end
-  end
-
-
-  class TPPConnection
-    def initialize(url, user, password)
-      @url = url
-      @user = user
-      @password = password
+    def request(*args)
+      @conn.request(*args)
     end
   end
 
 end
+
+
+require 'cloud/cloud'
+require 'tpp/tpp'
