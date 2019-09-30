@@ -1,11 +1,11 @@
 require 'minitest/autorun'
 require 'vcert'
 
-CLOUD_TOKEN = ""
-CLOUD_URL = ''
-TPP_URL = ''
+CLOUD_TOKEN = "e6e67336-c669-41d0-9f7c-d17ae72b0e88"
+CLOUD_URL = 'https://api.dev12.qa.venafi.io/v1/'
+TPP_URL = 'https://ha-tpp1.sqlha.com:5008/vedsdk/'
 TPP_USER = 'admin'
-TPP_PASSWORD = ''
+TPP_PASSWORD = 'newPassw0rd!'
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -31,7 +31,7 @@ class VcertTest < Minitest::Test
     assert_equal "ololo", conn.request("Default", Vcert::Request.new(csr: CSR_TEST))
   end
 
-  def ttest_request_tpp
+  def test_request_tpp
     conn = Vcert::Connection.new TPP_URL, TPP_USER, TPP_PASSWORD
     conn.request
     assert_equal "123", "123"
