@@ -82,7 +82,6 @@ module Vcert
       elsif @key_type == "ecdsa"
         @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
       end
-
     end
 
   end
