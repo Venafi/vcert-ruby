@@ -2,11 +2,11 @@ require 'minitest/autorun'
 require 'vcert'
 require 'openssl'
 
-CLOUD_TOKEN = "e6e67336-c669-41d0-9f7c-d17ae72b0e88"
-CLOUD_URL = 'https://api.dev12.qa.venafi.io/v1/'
-TPP_URL = 'https://ha-tpp1.sqlha.com:5008/vedsdk/'
-TPP_USER = 'admin'
-TPP_PASSWORD = 'newPassw0rd!'
+CLOUD_TOKEN = ENV['CLOUD_TOKEN']
+CLOUD_URL = ENV['CLOUD_URL']
+TPP_URL = ENV['TPP_URL']
+TPP_USER = ENV['TPP_USER']
+TPP_PASSWORD = ENV['TPP_PASSWORD']
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
