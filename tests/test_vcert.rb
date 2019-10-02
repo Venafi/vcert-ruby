@@ -61,6 +61,8 @@ class VcertTest < Minitest::Test
     req = Vcert::Request.new common_name: random_domain, key_type: "rsa", key_length: 4096
     csr = OpenSSL::X509::Request.new req.csr
     assert_equal(csr.public_key.n.num_bytes * 8, 4096)
-
+    req = Vcert::Request.new common_name: random_domain, key_type: "ec"
+    csr = OpenSSL::X509::Request.new req.csr
+    assert_instance_of(OpenSSL::PKey::EC, csr.public_key)
   end
 end

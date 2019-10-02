@@ -1,5 +1,5 @@
 require 'openssl'
-
+OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 
 module Vcert
   class Request
@@ -8,6 +8,7 @@ module Vcert
                    csr: nil)
       @common_name = common_name
       @private_key = private_key
+      #todo: parse private key and set public
       @key_type = key_type
       @key_length = key_length
       @key_curve = key_curve
@@ -48,7 +49,8 @@ module Vcert
       csr = OpenSSL::X509::Request.new
       csr.version = 0
       csr.subject = subject
-      csr.public_key = @private_key.public_key
+      csr.public_key = @public_key
+
       if @san_dns != nil
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [
@@ -79,9 +81,13 @@ module Vcert
     def generate_private_key
       if @key_type == "rsa"
         @private_key =  OpenSSL::PKey::RSA.new @key_length
-      elsif @key_type == "ecdsa"
-        @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
+        @public_key = @private_key.public_key
+      elsif @key_type == "ec"
+        @private_key, @public_key = OpenSSL::PKey::EC.new(@key_curve), OpenSSL::PKey::EC.new(@key_curve)
+        @private_key.generate_key
+        @public_key.public_key = @private_key.public_key
       end
+      a = 1
     end
 
   end
