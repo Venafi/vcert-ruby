@@ -73,6 +73,13 @@ module Vcert
       @csr
     end
 
+    def private_key
+      if @private_key == nil
+        generate_private_key
+      end
+      @private_key.to_pem
+    end
+
     private
 
 
