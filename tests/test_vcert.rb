@@ -27,17 +27,19 @@ YuWiOhL8NVOxPWFbiKWghQ2qH3hE0arsDA==
 -----END CERTIFICATE REQUEST-----"
 
 def random_string(length)
-    Array.new(length) { Array('a'..'z').sample }.join
+  Array.new(length) { Array('a'..'z').sample }.join
 end
 
 def random_domain
-    random_string(10) + ".example.com"
+  random_string(10) + ".example.com"
 end
 
 class VcertTest < Minitest::Test
   def test_request_cloud
-    conn = Vcert::Connection.new CLOUDURL, nil, nil, CLOUDTOKEN
-    assert_equal "123", conn.request("Default", Vcert::Request.new(common_name: random_domain , country: "US"))
+    conn = Vcert::Connection.new CLOUDURL, nil, nil, CLOUDAPIKEY
+    puts("Trying to ping service")
+    assert(conn.ping, "Ping should return true")
+    assert_equal "123", conn.request("Default", Vcert::Request.new(common_name: random_domain, country: "US"))
   end
 
   def test_request_tpp
@@ -51,7 +53,7 @@ class VcertTest < Minitest::Test
     assert_raises do
       req.csr
     end
-    req = Vcert::Request.new common_name:  random_domain
+    req = Vcert::Request.new common_name: random_domain
     assert(req.csr.index("-----BEGIN CERTIFICATE REQUEST-----") == 0)
     req = Vcert::Request.new common_name: random_domain, csr: CSR_TEST
     assert_equal(req.csr, CSR_TEST)
