@@ -15,6 +15,10 @@ class Vcert::CloudConnection
     return request_id
   end
 
+  def ping
+    return true
+  end
+
   private
   TOKEN_HEADER_NAME = "tppl-api-key"
   URL_REQUEST =  "certificaterequests"
@@ -48,8 +52,5 @@ class Vcert::CloudConnection
     return data
   end
 
-  def ping
-    return true
-  end
 end
 
