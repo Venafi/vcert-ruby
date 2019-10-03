@@ -48,8 +48,8 @@ class Vcert::CloudConnection
     return data
   end
 
-  def ping()
-    return false
+  def ping
+    return true
   end
 end
 
