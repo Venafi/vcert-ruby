@@ -2,11 +2,11 @@ require 'minitest/autorun'
 require 'vcert'
 require 'openssl'
 
-CLOUD_TOKEN = ENV['CLOUD_TOKEN']
-CLOUD_URL = ENV['CLOUD_URL']
-TPP_URL = ENV['TPP_URL']
-TPP_USER = ENV['TPP_USER']
-TPP_PASSWORD = ENV['TPP_PASSWORD']
+CLOUDAPIKEY = ENV['CLOUDAPIKEY']
+CLOUDURL = ENV['CLOUDURL']
+TPPURL = ENV['TPPURL']
+TPPUSER = ENV['TPPUSER']
+TPPPASSWORD = ENV['TPPPASSWORD']
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -36,12 +36,12 @@ end
 
 class VcertTest < Minitest::Test
   def test_request_cloud
-    conn = Vcert::Connection.new CLOUD_URL, nil, nil, CLOUD_TOKEN
+    conn = Vcert::Connection.new CLOUDURL, nil, nil, CLOUDTOKEN
     assert_equal "123", conn.request("Default", Vcert::Request.new(common_name: random_domain , country: "US"))
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new TPP_URL, TPP_USER, TPP_PASSWORD
+    conn = Vcert::Connection.new TPPURL, TPPUSER, TPPPASSWORD
     conn.request
     assert_equal "123", "123"
   end
