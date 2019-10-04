@@ -43,7 +43,7 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new TPPURL, TPPUSER, TPPPASSWORD
+    conn = Vcert::Connection.new(url: TPPURL, user: TPPUSER, password: TPPPASSWORD)
     conn.request
     assert_equal "123", "123"
   end
