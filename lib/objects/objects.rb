@@ -100,8 +100,25 @@ module Vcert
       elsif @key_type == "ecdsa"
         @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
       end
-
     end
+  end
+
+  class Certificate
+    def initialize cert, chain, private_key
+      @cert = cert
+      @chain = chain
+      @private_key = private_key
+    end
+    attr_reader cert
+    attr_reader chain
+    attr_reader private_key
+  end
+
+  class Policy
+
+  end
+
+  class ZoneConfiguration
 
   end
 end
