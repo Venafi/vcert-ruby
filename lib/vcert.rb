@@ -16,6 +16,22 @@ module Vcert
     def request(*args)
       @conn.request(*args)
     end
+
+    def retrieve(*args)
+      @conn.retrieve(*args)
+    end
+
+    def revoke(*args)
+      @conn.revoke(*args)
+    end
+
+    def zone_configuration(*args)
+      @conn.zone_configuration(*args)
+    end
+
+    def policy(*args)
+      @conn.policy(*args)
+    end
   end
 end
 
