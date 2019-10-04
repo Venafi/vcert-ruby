@@ -5,7 +5,7 @@ module Vcert
   class Request
     def initialize(common_name: nil, private_key: nil, key_type: "rsa", key_length: 2048, key_curve: "prime256v1",
                    organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
-                   csr: nil)
+                   friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
       @key_type = key_type
@@ -17,7 +17,8 @@ module Vcert
       @province = province
       @locality = locality
       @san_dns = san_dns
-
+      @friendly_name = friendly_name
+      @id = nil
       @csr = csr
     end
 
@@ -80,6 +81,16 @@ module Vcert
       @private_key.to_pem
     end
 
+    def friendly_name
+      if @friendly_name != nil
+        return @friendly_name
+      end
+      @common_name
+    end
+
+    def id=(value)
+      @id = value
+    end
     private
 
 
