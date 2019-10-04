@@ -30,19 +30,19 @@ module Vcert
           ['CN', @common_name]
       ]
       if @organization != nil
-        subject_attrs.append(['O', @organization])
+        subject_attrs.push(['O', @organization])
       end
       if @organizational_unit != nil
-        subject_attrs.append(['OU', @organizational_unit])
+        subject_attrs.push(['OU', @organizational_unit])
       end
       if @country != nil
-        subject_attrs.append(['C', @country])
+        subject_attrs.push(['C', @country])
       end
       if @province !=  nil
-        subject_attrs.append(['ST', @province])
+        subject_attrs.push(['ST', @province])
       end
       if @locality != nil
-        subject_attrs.append(['L', @locality])
+        subject_attrs.push(['L', @locality])
       end
 
       subject = OpenSSL::X509::Name.new subject_attrs
