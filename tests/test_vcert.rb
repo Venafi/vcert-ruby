@@ -6,6 +6,7 @@ CLOUD_URL = 'https://api.dev12.qa.venafi.io/v1/'
 TPP_URL = 'https://ha-tpp1.sqlha.com:5008/vedsdk/'
 TPP_USER = 'admin'
 TPP_PASSWORD = 'newPassw0rd!'
+TPP_ZONE = ENV['TPPZONE']
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -26,14 +27,15 @@ YuWiOhL8NVOxPWFbiKWghQ2qH3hE0arsDA==
 -----END CERTIFICATE REQUEST-----"
 
 class VcertTest < Minitest::Test
-  def test_request_cloud
-    conn = Vcert::Connection.new CLOUD_URL, nil, nil, CLOUD_TOKEN
+  def ttest_request_cloud
+    conn = Vcert::Connection.new url: CLOUD_URL, cloud_token: CLOUD_TOKEN
     assert_equal "ololo", conn.request("Default", Vcert::Request.new(csr: CSR_TEST))
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new TPP_URL, TPP_USER, TPP_PASSWORD
-    conn.request
+    conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
+    req = Vcert::Request.new common_name: 'test432432423.example.com'
+    id = conn.request TPP_ZONE, req
     assert_equal "123", "123"
   end
 end
