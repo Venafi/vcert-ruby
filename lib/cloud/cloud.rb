@@ -46,7 +46,7 @@ class Vcert::CloudConnection
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
     # request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
-    url = uri.path + url
+    url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
 
