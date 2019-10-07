@@ -27,7 +27,7 @@ class Vcert::CloudConnection
 
   def get_zoneId_by_tag(tag)
     data = get(URL_ZONE_BY_TAG + tag)
-    return data['id']
+    data['id']
   end
 
   def get(url)
@@ -35,8 +35,10 @@ class Vcert::CloudConnection
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
     request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
-    url = uri.path + url
+    url = uri.path + "/" + url
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
+    raise "Bad response from post: \n#{response.body}." if response === Timeout::Error || Errno::EINVAL || Errno::ECONNRESET || EOFError ||
+        Net::HTTPBadResponse || Net::HTTPHeaderSyntaxError || Net::ProtocolError || Net::HTTPNotFound
     data = JSON.parse(response.body)
     data
   end
