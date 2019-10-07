@@ -1,6 +1,9 @@
 require 'json'
-
-
+HTTP_ERRORS = [Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Net::HTTPNotFound]
+ALL_NET_HTTP_ERRORS = [
+    Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
+    Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Net::HTTPNotFound
+]
 class Vcert::CloudConnection
   def initialize(url, token)
     @url = url
@@ -31,16 +34,30 @@ class Vcert::CloudConnection
   end
 
   def get(url)
+    #   TODO: find a way for normal http error handling
+    begin
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
     request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + "/" + url
+
+
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
-    raise "Bad response from post: \n#{response.body}." if response === Timeout::Error || Errno::EINVAL || Errno::ECONNRESET || EOFError ||
-        Net::HTTPBadResponse || Net::HTTPHeaderSyntaxError || Net::ProtocolError || Net::HTTPNotFound
+    rescue *ALL_NET_HTTP_ERRORS => err
+      raise "HTTP error!" + err.message
+    end
+
+    # HTTP_ERRORS.select { |e| raise "Bad response from GET: \n#{e.body}." if response == e }
+    # raise "Bad response from GET: \n#{response.body}." if response == Timeout::Error || response == Errno::EINVAL || response == Errno::ECONNRESET || response == EOFError ||
+    #     response == Net::HTTPBadResponse || response == Net::HTTPHeaderSyntaxError || response == Net::ProtocolError || response == Net::HTTPNotFound
+    # if response == Net::HTTPNotFound
+    #   raise "404!!!!"
+    # end
     data = JSON.parse(response.body)
+    # rescue *ALL_NET_HTTP_ERRORS
     data
+    # end
   end
 
   def post(url, data)
@@ -51,9 +68,6 @@ class Vcert::CloudConnection
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
-
-    raise "Bad response from post: \n#{response.body}." if response === Timeout::Error || Errno::EINVAL || Errno::ECONNRESET || EOFError ||
-        Net::HTTPBadResponse || Net::HTTPHeaderSyntaxError || Net::ProtocolError || Net::HTTPNotFound
 
     data = JSON.parse(response.body)
     data
