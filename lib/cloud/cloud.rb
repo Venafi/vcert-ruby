@@ -12,16 +12,17 @@ class Vcert::CloudConnection
     zone_id = get_zoneId_by_tag(zone_tag)
     data = post(URL_REQUEST, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     request_id = data['certificateRequests'][0]["id"]
-    return request_id
+    request_id
   end
 
   def ping
-    return true
+    true
   end
 
   private
+
   TOKEN_HEADER_NAME = "tppl-api-key"
-  URL_REQUEST =  "certificaterequests"
+  URL_REQUEST = "certificaterequests"
   URL_ZONE_BY_TAG = "zones/tag/"
 
   def get_zoneId_by_tag(tag)
@@ -33,23 +34,27 @@ class Vcert::CloudConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE  # todo: investigate verifying
+    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + url
-    response = request.get(url,{TOKEN_HEADER_NAME => @token})
+    response = request.get(url, {TOKEN_HEADER_NAME => @token})
     data = JSON.parse(response.body)
-    return data
+    data
   end
 
   def post(url, data)
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    # request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + url
     encoded_data = JSON.generate(data)
-    response = request.post(url, encoded_data,  {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
+    response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
+
+    raise "Bad response from post: \n#{response.body}." if response === Timeout::Error || Errno::EINVAL || Errno::ECONNRESET || EOFError ||
+        Net::HTTPBadResponse || Net::HTTPHeaderSyntaxError || Net::ProtocolError || Net::HTTPNotFound
+
     data = JSON.parse(response.body)
-    return data
+    data
   end
 
 end

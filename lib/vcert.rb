@@ -17,8 +17,8 @@ module Vcert
       @conn.request(*args)
     end
 
-    def ping(*args)
-      @conn.ping(*args)
+    def ping
+      @conn.ping
     end
   end
 end
