@@ -44,9 +44,9 @@ class VcertTest < Minitest::Test
     puts("Trying to ping service")
     puts("Ping sucesfull") if assert(conn.ping, "Ping should return true")
     request = Vcert::Request.new(common_name: random_domain, country: "US")
-    cert_response = conn.request("Default", request)
-    puts cert_response.inspect
-    puts cert_response.cert_id
+    conn.request("Default", request)
+    puts request.inspect
+    puts request.cert_id
     # cert = conn.retrieve_cert(request)
     # puts cert
   end
