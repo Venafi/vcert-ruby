@@ -1,5 +1,5 @@
 require 'net/https'
-
+require 'time'
 
 module Vcert
   class Connection
@@ -31,6 +31,23 @@ module Vcert
 
     def policy(*args)
       @conn.policy(*args)
+    end
+
+    def request_and_retrieve(req, zone, timeout)
+      request zone, req
+      t = Time.new() + timeout
+      loop do
+        if Time.new() > t
+          #todo log
+          break
+        end
+        certificate = retrieve(req)
+        if certificate != nil
+          return certificate
+        end
+        sleep 10
+      end
+      return nil
     end
   end
 end
