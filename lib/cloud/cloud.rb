@@ -1,9 +1,5 @@
 require 'json'
-HTTP_ERRORS = [Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError, Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Net::HTTPNotFound]
-ALL_NET_HTTP_ERRORS = [
-    Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError,
-    Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError, Net::HTTPNotFound
-]
+
 class Vcert::CloudConnection
   def initialize(url, token)
     @url = url
@@ -14,13 +10,30 @@ class Vcert::CloudConnection
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
     data = post(URL_REQUEST, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    puts "Cert response:"
+    puts JSON.pretty_generate(data)
     request.id = data['certificateRequests'][0]["id"]
     request
   end
 
-  def retrieve_cert(certificate_request)
-    puts("Getting certificate status for id #{certificate_request.id}")
+  def retrieve(request)
+    url = CERTIFICATE_RETRIEVE % request.id
+    if request.chain_option == "first"
+      url += "?chainOrder=#{CHAIN_OPTION_ROOT_FIRST}&format=PEM"
+    elsif request.chain_option == "last"
+      url += "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM"
+    else
+      puts "chain option #{request.chain_option} is not valid"
+      raise "Bad data"
+    end
+    status, data = get(url)
+    if status == "200" or status == "409"
+      puts "retrieve data is: #{data}"
+    else
+      raise "Bad response"
+    end
 
+    data
   end
 
   def ping
@@ -32,9 +45,15 @@ class Vcert::CloudConnection
   TOKEN_HEADER_NAME = "tppl-api-key"
   URL_REQUEST = "certificaterequests"
   URL_ZONE_BY_TAG = "zones/tag/"
+  CERTIFICATE_RETRIEVE = URL_REQUEST + "/%s/certificate"
+  CHAIN_OPTION_ROOT_FIRST = "ROOT_FIRST"
+  CHAIN_OPTION_ROOT_LAST = "EE_FIRST"
 
   def get_zoneId_by_tag(tag)
-    data = get(URL_ZONE_BY_TAG + tag)
+    data, code = get(URL_ZONE_BY_TAG + tag)
+    if code != "200"
+      raise "Bad HTTP response from get zone"
+    end
     data['id']
   end
 
@@ -53,15 +72,12 @@ class Vcert::CloudConnection
       raise "HTTP error!" + err.message
     end
 
-    # HTTP_ERRORS.select { |e| raise "Bad response from GET: \n#{e.body}." if response == e }
-    # raise "Bad response from GET: \n#{response.body}." if response == Timeout::Error || response == Errno::EINVAL || response == Errno::ECONNRESET || response == EOFError ||
-    #     response == Net::HTTPBadResponse || response == Net::HTTPHeaderSyntaxError || response == Net::ProtocolError || response == Net::HTTPNotFound
-    # if response == Net::HTTPNotFound
-    #   raise "404!!!!"
-    # end
+    if response.code != "200"
+      raise "Bad HTTP response: #{response.body}"
+    end
     data = JSON.parse(response.body)
     # rescue *ALL_NET_HTTP_ERRORS
-    data
+    return data, response.code
     # end
   end
 

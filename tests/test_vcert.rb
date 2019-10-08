@@ -47,8 +47,8 @@ class VcertTest < Minitest::Test
     conn.request("Default", request)
     puts request.inspect
     puts request.id
-    # cert = conn.retrieve_cert(request)
-    # puts cert
+    cert_status = conn.retrieve(request)
+    puts "cert_status is #{cert_status}"
   end
 
   def test_request_tpp

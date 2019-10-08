@@ -4,10 +4,10 @@ OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 module Vcert
   class Request
     attr_accessor :id
-
+    attr_accessor :chain_option
     def initialize(common_name: nil, private_key: nil, key_type: "rsa", key_length: 2048, key_curve: "prime256v1",
                    organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
-                   friendly_name: nil, id: nil, csr: nil)
+                   friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
       #todo: parse private key and set public
@@ -92,6 +92,9 @@ module Vcert
       @common_name
     end
 
+    def chain_option
+      @chain_option || "last"
+    end
     private
 
 
