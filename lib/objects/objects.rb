@@ -91,9 +91,6 @@ module Vcert
       @common_name
     end
 
-    def id=(value)
-      @id = value
-    end
     private
 
 
