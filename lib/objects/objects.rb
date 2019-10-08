@@ -88,6 +88,10 @@ module Vcert
       @common_name
     end
 
+    def id
+      @id
+    end
+
     def id=(value)
       @id = value
     end
@@ -104,14 +108,14 @@ module Vcert
   end
 
   class Certificate
-    def initialize cert, chain, private_key
+    def initialize(cert, chain, private_key)
       @cert = cert
       @chain = chain
       @private_key = private_key
     end
-    attr_reader cert
-    attr_reader chain
-    attr_reader private_key
+    attr_reader :cert
+    attr_reader :chain
+    attr_accessor :private_key
   end
 
   class Policy
