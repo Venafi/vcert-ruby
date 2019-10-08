@@ -35,7 +35,10 @@ class VcertTest < Minitest::Test
   def test_request_tpp
     conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
     req = Vcert::Request.new common_name: 'test432432423.example.com'
-    id = conn.request TPP_ZONE, req
+    cert = conn.request_and_retrieve req, TPP_ZONE,600
+
+    puts cert.cert
+    puts cert.private_key
     assert_equal "123", "123"
   end
 end
