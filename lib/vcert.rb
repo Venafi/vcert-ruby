@@ -20,6 +20,10 @@ module Vcert
     def ping
       @conn.ping
     end
+
+    def retrieve_cert(*args)
+      @conn.retrieve_cert(*args)
+    end
   end
 end
 

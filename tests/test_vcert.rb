@@ -43,8 +43,12 @@ class VcertTest < Minitest::Test
     conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     puts("Trying to ping service")
     puts("Ping sucesfull") if assert(conn.ping, "Ping should return true")
-    conn.request("Default", Vcert::Request.new(common_name: random_domain, country: "US"))
-
+    request = Vcert::Request.new(common_name: random_domain, country: "US")
+    cert_response = conn.request("Default", request)
+    puts cert_response.inspect
+    puts cert_response.cert_id
+    # cert = conn.retrieve_cert(request)
+    # puts cert
   end
 
   def test_request_tpp
