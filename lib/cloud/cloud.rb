@@ -14,7 +14,7 @@ class Vcert::CloudConnection
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
     data = post(URL_REQUEST, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
-    request.cert_id = data['certificateRequests'][0]["id"]
+    request.id = data['certificateRequests'][0]["id"]
     request
   end
 

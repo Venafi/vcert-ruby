@@ -46,7 +46,7 @@ class VcertTest < Minitest::Test
     request = Vcert::Request.new(common_name: random_domain, country: "US")
     conn.request("Default", request)
     puts request.inspect
-    puts request.cert_id
+    puts request.id
     # cert = conn.retrieve_cert(request)
     # puts cert
   end
