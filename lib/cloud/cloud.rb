@@ -28,12 +28,10 @@ class Vcert::CloudConnection
     end
     data, response_code = get(url)
     if response_code == "200" or response_code == "409"
-      puts "retrieve data is: #{data}"
+      return data
     else
       raise "Bad status #{response_code}"
     end
-
-    return data
   end
 
   def ping
