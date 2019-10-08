@@ -26,14 +26,14 @@ class Vcert::CloudConnection
       puts "chain option #{request.chain_option} is not valid"
       raise "Bad data"
     end
-    status, data = get(url)
-    if status == "200" or status == "409"
+    data, response_code = get(url)
+    if response_code == "200" or response_code == "409"
       puts "retrieve data is: #{data}"
     else
-      raise "Bad response"
+      raise "Bad status #{response_code}"
     end
 
-    data
+    return data
   end
 
   def ping
@@ -59,7 +59,6 @@ class Vcert::CloudConnection
 
   def get(url)
     #   TODO: find a way for normal http error handling
-    begin
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
@@ -68,14 +67,20 @@ class Vcert::CloudConnection
 
 
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
-    rescue *ALL_NET_HTTP_ERRORS => err
-      raise "HTTP error!" + err.message
-    end
-
     if response.code != "200"
       raise "Bad HTTP response: #{response.body}"
     end
-    data = JSON.parse(response.body)
+    if response.header['content-type'] == "application/json"
+      begin
+        data = JSON.parse(response.body)
+      rescue JSON::ParserError
+        raise "JSON parse error. Cant parse body response"
+      end
+    elsif response.header['content-type'] == "text/plain"
+      data = response.body
+    else
+      raise "Can't process content-type #{response.header['content-type']}"
+    end
     # rescue *ALL_NET_HTTP_ERRORS
     return data, response.code
     # end
