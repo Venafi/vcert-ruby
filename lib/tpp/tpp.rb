@@ -1,21 +1,45 @@
 require 'json'
 require 'date'
+require 'base64'
 
 class Vcert::TPPConnection
   def initialize(url, user, password)
-    @url = url
+    @url = normalize_url url
     @user = user
     @password = password
     @token = nil
   end
 
-  def request()
-    post URL_CERTIFICATE_REQUESTS, {}
+  def request(zone_tag, request)
+    data={:PolicyDN => policy_dn(zone_tag),
+                  :PKCS10 => request.csr,
+                  :ObjectName =>  request.friendly_name,
+                  :DisableAutomaticRenewal =>  "true"}
+    code, response = post URL_CERTIFICATE_REQUESTS, data
+    if code != 200
+      raise "Bad server status code"
+    end
+    request.id = response['CertificateDN']
+  end
+
+  def retrieve(request)
+    retrieve_request = {CertificateDN: request.id, Format: "base64", IncludeChain: 'true', RootFirstOrder: "false"}
+    code, response = post CERTIFICATE_RETRIEVE, retrieve_request
+    if code != 200
+      return nil
+    end
+    full_chain = Base64.decode(response['CertificateData'])
+    cert = parse_full_chain full_chain
+    if cert.private_key == nil
+      cert.private_key = request.private_key
+    end
+    cert
   end
 
   private
   URL_AUTHORIZE = "authorize/"
   URL_CERTIFICATE_REQUESTS = "certificates/request"
+  CERTIFICATE_RETRIEVE = "certificates/retrieve"
   TOKEN_HEADER_NAME = "x-venafi-api-key"
   def auth
     uri = URI.parse(@url)
@@ -44,7 +68,7 @@ class Vcert::TPPConnection
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data,  {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
     data = JSON.parse(response.body)
-    return data
+    return response.code data
   end
 
   def get
@@ -61,4 +85,39 @@ class Vcert::TPPConnection
     return data
   end
 
+  def policy_dn(zone)
+    if zone == nil || zone == ''
+      raise "Empty zone"
+    end
+    if zone =~ /^\\\\VED\\\\Poplicy/
+      return zone
+    end
+    if zone =~ /^\\\\/
+      return '\\VED\\Policy' + zone
+    else
+      return '\\VED\\Policy\\' + zone
+    end
+  end
+
+  def normalize_url(url)
+    if url.index('http://') == 0
+      url = "https://" + url[7..-1]
+    elsif url.index('https://') !=0
+      url = 'https://' + url
+    end
+    unless url.end_with?('/')
+      url = url + '/'
+    end
+    unless url.end_with?('/vedsdk/')
+      url = url + 'vedsdk/'
+    end
+    unless url =~ /^https:\/\/[a-z\d]+[-a-z\d.]+[a-z\d][:\d]*\/vedsdk\/$/
+      raise("bad TPP url")
+    end
+    url
+  end
+
+  def parse_full_chain full_chain
+    Vcert::Certificate.new  full_chain, '', nil # todo: parser
+  end
 end

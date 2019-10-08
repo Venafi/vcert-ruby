@@ -3,10 +3,10 @@ OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 
 module Vcert
   class Request
-    attr_accessor :cert_id
+    attr_accessor :id
     def initialize(common_name: nil, private_key: nil, key_type: "rsa", key_length: 2048, key_curve: "prime256v1",
                    organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
-                   cert_id: nil, csr: nil)
+                   friendly_name: nil, cert_id: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
       #todo: parse private key and set public
@@ -19,7 +19,8 @@ module Vcert
       @province = province
       @locality = locality
       @san_dns = san_dns
-      @cert_id = cert_id
+      @friendly_name = friendly_name
+      @id = nil
 
       @csr = csr
     end
@@ -51,8 +52,7 @@ module Vcert
       csr = OpenSSL::X509::Request.new
       csr.version = 0
       csr.subject = subject
-      csr.public_key = @public_key
-
+      csr.public_key = @private_key.public_key
       if @san_dns != nil
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [
@@ -84,6 +84,16 @@ module Vcert
       @private_key.to_pem
     end
 
+    def friendly_name
+      if @friendly_name != nil
+        return @friendly_name
+      end
+      @common_name
+    end
+
+    def id=(value)
+      @id = value
+    end
     private
 
 
@@ -98,6 +108,24 @@ module Vcert
       end
       a = 1
     end
+  end
+
+  class Certificate
+    def initialize cert, chain, private_key
+      @cert = cert
+      @chain = chain
+      @private_key = private_key
+    end
+    attr_reader cert
+    attr_reader chain
+    attr_reader private_key
+  end
+
+  class Policy
+
+  end
+
+  class ZoneConfiguration
 
   end
 end
