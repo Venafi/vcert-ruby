@@ -4,8 +4,9 @@ OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 module Vcert
   class Request
     attr_accessor :id
+
     def initialize(common_name: nil, private_key: nil, key_type: "rsa", key_length: 2048, key_curve: "prime256v1",
-                   organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
+                   organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
@@ -88,12 +89,13 @@ module Vcert
       end
       @common_name
     end
+
     private
 
 
     def generate_private_key
       if @key_type == "rsa"
-        @private_key =  OpenSSL::PKey::RSA.new @key_length
+        @private_key = OpenSSL::PKey::RSA.new @key_length
       elsif @key_type == "ecdsa"
         @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
       end
@@ -102,6 +104,7 @@ module Vcert
 
   class Certificate
     attr_reader :cert, :chain, :private_key
+
     def initialize(cert: nil, chain: nil, private_key: nil)
       @cert = cert
       @chain = chain
