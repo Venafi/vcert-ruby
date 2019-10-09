@@ -20,23 +20,27 @@ class Vcert::CloudConnection
     puts("Getting certificate status for id %s" % request.id)
     sleep(5)
     status, data = get(CERTIFICATE_STATUS % request.id)
-    if status == "200" or status == 409
+    if status == "200" or status == "409"
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
         puts("Certificate status is %s." % data['status'])
         return nil
       elsif data['status'] == CERT_STATUS_FAILED
         puts("Status is %s. Returning data for debug" % data['status'])
-        return "Certificate FAILED"
+        raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
-        status, data = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=last&format=PEM")
+        sleep(1)
+        # status, data = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=last&format=PEM")
+        status, full_chain = get(CERTIFICATE_RETRIEVE % request.id)
         if status == "200"
-          data
+          cert = parse_full_chain full_chain
+          if cert.private_key == nil
+            cert.private_key = request.private_key
+          end
         else
           raise "Unexpected server behavior"
         end
       end
     end
-    data
   end
 
   def ping
@@ -107,5 +111,8 @@ class Vcert::CloudConnection
     data
   end
 
+  def parse_full_chain(full_chain)
+    Vcert::Certificate.new  full_chain, '', nil # todo: parser
+  end
 end
 
