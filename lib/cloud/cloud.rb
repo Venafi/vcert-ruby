@@ -29,8 +29,7 @@ class Vcert::CloudConnection
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
         sleep(1)
-        # status, data = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=last&format=PEM")
-        status, full_chain = get(CERTIFICATE_RETRIEVE % request.id)
+        status, full_chain = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == "200"
           cert = parse_full_chain full_chain
           if cert.private_key == nil
@@ -112,7 +111,28 @@ class Vcert::CloudConnection
   end
 
   def parse_full_chain(full_chain)
-    Vcert::Certificate.new  full_chain, '', nil # todo: parser
+    pems = parse_pem_list(full_chain)
+    Vcert::Certificate.new  pems[0], pems[1..-1], nil # todo: parser
+  end
+
+  def parse_pem_list(multiline)
+    pems = []
+    buf = ""
+    current_string_is_pem = false
+    multiline.each_line do |line|
+      if line.match(/-----BEGIN [A-Z]+-----/)
+        current_string_is_pem = true
+      end
+      if current_string_is_pem
+        buf = buf + line
+      end
+      if line.match(/-----END [A-Z]+-----/)
+        current_string_is_pem = false
+        pems.push(buf)
+        buf = ""
+      end
+    end
+    pems
   end
 end
 
