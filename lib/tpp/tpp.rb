@@ -119,7 +119,8 @@ class Vcert::TPPConnection
   end
 
   def parse_full_chain(full_chain)
-    Vcert::Certificate.new  full_chain, '', nil # todo: parser
+    pems = parse_pem_list(full_chain)
+    Vcert::Certificate.new  pems[0], pems[1..-1], nil # todo: parser
   end
 
   def parse_pem_list(multiline)
@@ -133,7 +134,7 @@ class Vcert::TPPConnection
       if current_string_is_pem
         buf = buf + line
       end
-      if line.match(/-----END [A-Z]+-----]/)
+      if line.match(/-----END [A-Z]+-----/)
         current_string_is_pem = false
         pems.push(buf)
         buf = ""
