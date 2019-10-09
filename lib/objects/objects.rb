@@ -5,11 +5,10 @@ module Vcert
   class Request
     attr_accessor :id
     def initialize(common_name: nil, private_key: nil, key_type: "rsa", key_length: 2048, key_curve: "prime256v1",
-                   organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
+                   organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
-      #todo: parse private key and set public
       @key_type = key_type
       @key_length = key_length
       @key_curve = key_curve
@@ -21,7 +20,6 @@ module Vcert
       @san_dns = san_dns
       @friendly_name = friendly_name
       @id = nil
-
       @csr = csr
     end
 
@@ -95,14 +93,10 @@ module Vcert
 
     def generate_private_key
       if @key_type == "rsa"
-        @private_key = OpenSSL::PKey::RSA.new @key_length
-        @public_key = @private_key.public_key
-      elsif @key_type == "ec"
-        @private_key, @public_key = OpenSSL::PKey::EC.new(@key_curve), OpenSSL::PKey::EC.new(@key_curve)
-        @private_key.generate_key
-        @public_key.public_key = @private_key.public_key
+        @private_key =  OpenSSL::PKey::RSA.new @key_length
+      elsif @key_type == "ecdsa"
+        @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
       end
-      a = 1
     end
   end
 

@@ -17,7 +17,8 @@ class Vcert::TPPConnection
                   :DisableAutomaticRenewal =>  "true"}
     code, response = post URL_CERTIFICATE_REQUESTS, data
     if code != 200
-      raise "Bad server status code"
+      puts response
+      raise "Bad server status code #{code}"
     end
     request.id = response['CertificateDN']
   end
@@ -28,7 +29,7 @@ class Vcert::TPPConnection
     if code != 200
       return nil
     end
-    full_chain = Base64.decode(response['CertificateData'])
+    full_chain = Base64.decode64(response['CertificateData'])
     cert = parse_full_chain full_chain
     if cert.private_key == nil
       cert.private_key = request.private_key
@@ -68,7 +69,7 @@ class Vcert::TPPConnection
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data,  {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
     data = JSON.parse(response.body)
-    return response.code data
+    return response.code.to_i, data
   end
 
   def get
@@ -82,7 +83,7 @@ class Vcert::TPPConnection
     url = uri.path + url
     response = request.get(url,{TOKEN_HEADER_NAME => @token[0]})
     data = JSON.parse(response.body)
-    return data
+    return response.code.to_i, data
   end
 
   def policy_dn(zone)
@@ -117,7 +118,7 @@ class Vcert::TPPConnection
     url
   end
 
-  def parse_full_chain full_chain
+  def parse_full_chain(full_chain)
     Vcert::Certificate.new  full_chain, '', nil # todo: parser
   end
 end
