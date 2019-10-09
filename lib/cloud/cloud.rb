@@ -9,7 +9,7 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    data = post(URL_REQUEST, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     puts "Cert response:"
     puts JSON.pretty_generate(data)
     request.id = data['certificateRequests'][0]["id"]
@@ -17,21 +17,26 @@ class Vcert::CloudConnection
   end
 
   def retrieve(request)
-    url = CERTIFICATE_RETRIEVE % request.id
-    if request.chain_option == "first"
-      url += "?chainOrder=#{CHAIN_OPTION_ROOT_FIRST}&format=PEM"
-    elsif request.chain_option == "last"
-      url += "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM"
-    else
-      puts "chain option #{request.chain_option} is not valid"
-      raise "Bad data"
+    puts("Getting certificate status for id %s" % request.id)
+    sleep(5)
+    status, data = get(CERTIFICATE_STATUS % request.id)
+    if status == "200" or status == 409
+      if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
+        puts("Certificate status is %s." % data['status'])
+        return nil
+      elsif data['status'] == CERT_STATUS_FAILED
+        puts("Status is %s. Returning data for debug" % data['status'])
+        return "Certificate FAILED"
+      elsif data['status'] == CERT_STATUS_ISSUED
+        status, data = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=last&format=PEM")
+        if status == "200"
+          data
+        else
+          raise "Unexpected server behavior"
+        end
+      end
     end
-    data, response_code = get(url)
-    if response_code == "200" or response_code == "409"
-      data
-    else
-      raise "Bad status #{response_code}"
-    end
+    data
   end
 
   def ping
@@ -41,9 +46,10 @@ class Vcert::CloudConnection
   private
 
   TOKEN_HEADER_NAME = "tppl-api-key"
-  URL_REQUEST = "certificaterequests"
   URL_ZONE_BY_TAG = "zones/tag/"
-  CERTIFICATE_RETRIEVE = URL_REQUEST + "/%s/certificate"
+  CERTIFICATE_REQUESTS = "certificaterequests"
+  CERTIFICATE_STATUS = CERTIFICATE_REQUESTS + "/%s"
+  CERTIFICATE_RETRIEVE = CERTIFICATE_REQUESTS + "/%s/certificate"
   CHAIN_OPTION_ROOT_FIRST = "ROOT_FIRST"
   CHAIN_OPTION_ROOT_LAST = "EE_FIRST"
   CERT_STATUS_REQUESTED = 'REQUESTED'
@@ -52,10 +58,7 @@ class Vcert::CloudConnection
   CERT_STATUS_ISSUED = 'ISSUED'
 
   def get_zoneId_by_tag(tag)
-    data, code = get(URL_ZONE_BY_TAG + tag)
-    if code != "200"
-      raise "Bad HTTP response from get zone"
-    end
+    status, data = get(URL_ZONE_BY_TAG + tag)
     data['id']
   end
 
@@ -69,8 +72,10 @@ class Vcert::CloudConnection
 
 
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
-    if response.code != "200"
-      raise "Bad HTTP response: #{response.body}"
+    case response.code
+    when "200", "201", "202", "409"
+    else
+      raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
     end
     if response.header['content-type'] == "application/json"
       begin
@@ -84,7 +89,7 @@ class Vcert::CloudConnection
       raise "Can't process content-type #{response.header['content-type']}"
     end
     # rescue *ALL_NET_HTTP_ERRORS
-    return data, response.code
+    return response.code, data
     # end
   end
 
