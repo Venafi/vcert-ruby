@@ -28,7 +28,7 @@ class Vcert::CloudConnection
     end
     data, response_code = get(url)
     if response_code == "200" or response_code == "409"
-      return data
+      data
     else
       raise "Bad status #{response_code}"
     end
@@ -46,6 +46,10 @@ class Vcert::CloudConnection
   CERTIFICATE_RETRIEVE = URL_REQUEST + "/%s/certificate"
   CHAIN_OPTION_ROOT_FIRST = "ROOT_FIRST"
   CHAIN_OPTION_ROOT_LAST = "EE_FIRST"
+  CERT_STATUS_REQUESTED = 'REQUESTED'
+  CERT_STATUS_PENDING = 'PENDING'
+  CERT_STATUS_FAILED = 'FAILED'
+  CERT_STATUS_ISSUED = 'ISSUED'
 
   def get_zoneId_by_tag(tag)
     data, code = get(URL_ZONE_BY_TAG + tag)

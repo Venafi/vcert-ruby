@@ -4,6 +4,7 @@ require 'openssl'
 
 CLOUDAPIKEY = ENV['CLOUDAPIKEY']
 CLOUDURL = ENV['CLOUDURL']
+CLOUDZONE = ENV['CLOUDZONE']
 TPPURL = ENV['TPPURL']
 TPPUSER = ENV['TPPUSER']
 TPPPASSWORD = ENV['TPPPASSWORD']
@@ -25,13 +26,14 @@ AilzNOkXEeBwCT79bdpc3xh/hrjf9PeItLMpS7lVUUYQH18JK203BMGOE76EaELA
 fk2X1wGedpdby5XRW0a7qozvwdBBTfI6/yMTP+iF5ghzvpCGtX2tYkyQ0I2GT/hV
 YuWiOhL8NVOxPWFbiKWghQ2qH3hE0arsDA==
 -----END CERTIFICATE REQUEST-----"
+TEST_DOMAIN = ENV['TEST_DOMAIN']
 
 def random_string(length)
   Array.new(length) { Array('a'..'z').sample }.join
 end
 
 def random_domain
-  random_string(10) + ".example.com"
+  random_string(10) + "." + TEST_DOMAIN
 end
 
 class VcertTest < Minitest::Test
@@ -44,7 +46,7 @@ class VcertTest < Minitest::Test
     puts("Trying to ping service")
     puts("Ping sucesfull") if assert(conn.ping, "Ping should return true")
     request = Vcert::Request.new(common_name: random_domain, country: "US")
-    conn.request("Default", request)
+    conn.request(CLOUDZONE, request)
     puts request.inspect
     puts request.id
     cert_status = conn.retrieve(request)
