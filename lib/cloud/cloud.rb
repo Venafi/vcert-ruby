@@ -74,6 +74,7 @@ class Vcert::CloudConnection
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
     case response.code
     when "200", "201", "202", "409"
+      puts("HTTP status OK")
     else
       raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
     end
