@@ -9,6 +9,8 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
+    policy = get_policy_by_id(zone_id)
+    puts(policy)
     data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     puts "Cert response:"
     puts JSON.pretty_generate(data)
@@ -51,6 +53,7 @@ class Vcert::CloudConnection
 
   TOKEN_HEADER_NAME = "tppl-api-key"
   URL_ZONE_BY_TAG = "zones/tag/"
+  URLS_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
   CERTIFICATE_REQUESTS = "certificaterequests"
   CERTIFICATE_STATUS = CERTIFICATE_REQUESTS + "/%s"
   CERTIFICATE_RETRIEVE = CERTIFICATE_REQUESTS + "/%s/certificate"
@@ -137,6 +140,46 @@ class Vcert::CloudConnection
       end
     end
     pems
+  end
+
+  def get_policy_by_id(policy_id)
+    status, data = get(URLS_TEMPLATE_BY_ID % policy_id)
+    if status != "200"
+      raise("Invalid status during geting policy: %s for policy %s" % status, policy_id)
+
+      return parse_policy_responce_to_object(data)
+    end
+  end
+
+  def parse_policy_responce_to_object(d)
+    policy = Policy(
+        d["id"],
+        d["companyId"],
+        d["name"],
+        d["systemGenerated"],
+        d["creationDate"],
+        d["subjectCNRegexes"],
+        d["subjectORegexes"],
+        d["subjectOURegexes"],
+        d["subjectSTRegexes"],
+        d["subjectLRegexes"],
+        d["subjectCValues"],
+        d["sanRegexes"],
+        [],
+        d['keyReuse']
+    )
+    for kt in d.get('keyTypes', [])
+      key_type = kt['keyType'].lower()
+      if key_type == KeyTypes.RSA
+        policy.key_types.append(KeyType(key_type = key_type, key_sizes = kt['keyLengths']))
+      elsif key_type == KeyTypes.ECDSA
+        policy.key_types.append(KeyType(key_type = key_type, key_curves = kt['keyCurve']))
+      else
+        log.error("Unknow key type: %s" % kt['keyType'])
+        raise ServerUnexptedBehavior
+        return policy
+      end
+    end
   end
 end
 

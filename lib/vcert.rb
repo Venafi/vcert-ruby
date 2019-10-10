@@ -29,12 +29,12 @@ module Vcert
       @conn.revoke(*args)
     end
 
-    def zone_configuration(*args)
-      @conn.zone_configuration(*args)
+    def read_zone_conf(*args)
+      @conn.read_zone_conf(*args)
     end
 
-    def policy(*args)
-      @conn.policy(*args)
+    def update_from_zone_config(*args)
+      @conn.update_from_zone_config(*args)
     end
 
     def request_and_retrieve(req, zone, timeout)
