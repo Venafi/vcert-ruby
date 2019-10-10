@@ -35,6 +35,7 @@ class Vcert::CloudConnection
           if cert.private_key == nil
             cert.private_key = request.private_key
           end
+          return cert
         else
           raise "Unexpected server behavior"
         end
@@ -112,7 +113,10 @@ class Vcert::CloudConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new  pems[0], pems[1..-1], nil # todo: parser
+    cert = Vcert::Certificate.new
+    cert.cert = pems[0]
+    cert.chain = pems[1..-1]
+    cert
   end
 
   def parse_pem_list(multiline)
