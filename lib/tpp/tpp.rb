@@ -37,6 +37,14 @@ class Vcert::TPPConnection
     cert
   end
 
+  def policy(zone_tag)
+
+  end
+
+  def zone_configuration(zone_tag)
+
+  end
+
   private
   URL_AUTHORIZE = "authorize/"
   URL_CERTIFICATE_REQUESTS = "certificates/request"
@@ -128,13 +136,13 @@ class Vcert::TPPConnection
     buf = ""
     current_string_is_pem = false
     multiline.each_line do |line|
-      if line.match(/-----BEGIN [A-Z]+-----/)
+      if line.match(/-----BEGIN [A-Z\ ]+-----/)
         current_string_is_pem = true
       end
       if current_string_is_pem
         buf = buf + line
       end
-      if line.match(/-----END [A-Z]+-----/)
+      if line.match(/-----END [A-Z\ ]+-----/)
         current_string_is_pem = false
         pems.push(buf)
         buf = ""
