@@ -117,9 +117,9 @@ module Vcert
 
   class Policy
     attr_reader :policy_id, :name, :system_generated, :creation_date
-    def initialize(policy_id, name, system_generated, creation_date, subject_cn_regexes, subject_o_regexes,
-                   subject_ou_regexes, subject_st_regexes, subject_l_regexes, subject_c_regexes,  san_regexes,
-                   key_types)
+    def initialize(policy_id:, name:, system_generated:, creation_date:, subject_cn_regexes:, subject_o_regexes:,
+                   subject_ou_regexes:, subject_st_regexes:, subject_l_regexes:, subject_c_regexes:,  san_regexes:,
+                   key_types:)
       @policy_id = policy_id
       @name = name
       @system_generated = system_generated
@@ -147,7 +147,7 @@ module Vcert
 
   class ZoneConfiguration
     attr_reader  :country, :province, :locality, :organization, :organizational_unit, :key_type
-    def initialize(country, province, locality, organization, organizational_unit, key_type)
+    def initialize(country:, province:, locality:, organization:, organizational_unit:, key_type:)
       @country = country
       @province = province
       @locality = locality
