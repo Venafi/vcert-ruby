@@ -90,6 +90,9 @@ module Vcert
       @common_name
     end
 
+    def update_from_zone_config(zone_config)
+
+    end
     private
 
 
@@ -113,11 +116,53 @@ module Vcert
   end
 
   class Policy
+    attr_reader :policy_id, :name, :system_generated, :creation_date
+    def initialize(policy_id, name, system_generated, creation_date, subject_cn_regexes, subject_o_regexes,
+                   subject_ou_regexes, subject_st_regexes, subject_l_regexes, subject_c_regexes,  san_regexes,
+                   key_types)
+      @policy_id = policy_id
+      @name = name
+      @system_generated = system_generated
+      @creation_date = creation_date
+      @subject_cn_regexes = subject_cn_regexes
+      @subject_c_regexes = subject_c_regexes
+      @subject_st_regexes = subject_st_regexes
+      @subject_l_regexes = subject_l_regexes
+      @subject_o_regexes = subject_o_regexes
+      @subject_ou_regexes = subject_ou_regexes
+      @san_regexes = san_regexes
+      @key_types = key_types
+    end
+
+    def check_request(request)
+
+    end
+
+    private
+    def check_string_match_regexps(s, regexps)
+      return true
+    end
 
   end
 
   class ZoneConfiguration
+    attr_reader  :country, :province, :locality, :organization, :organizational_unit, :key_type
+    def initialize(country, province, locality, organization, organizational_unit, key_type)
+      @country = country
+      @province = province
+      @locality = locality
+      @organization = organization
+      @organizational_unit = organizational_unit
+      @key_type = key_type
+    end
+  end
 
+  class CertField
+    attr_reader :value, :locked
+    def initialize(value, locked: false )
+      @value = value
+      @locked = locked
+    end
   end
 end
 
