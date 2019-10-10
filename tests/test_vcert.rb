@@ -45,6 +45,8 @@ class VcertTest < Minitest::Test
     conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     puts("Ping sucesfull. Requesting cert with CN #{random_domain}") if assert(conn.ping, "Ping should return true")
     request = Vcert::Request.new(common_name: random_domain, country: "US")
+    zone_config = conn.read_zone_conf(CLOUDZONE)
+    request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
     puts("cert is:\n"+cert.cert)
     puts("pk is:\n"+cert.private_key)

@@ -9,7 +9,6 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    policy = get_policy_by_id(zone_id)
     puts(policy)
     data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     puts "Cert response:"
@@ -49,10 +48,18 @@ class Vcert::CloudConnection
     true
   end
 
+  def read_zone_conf(tag)
+    status, data = get(URLS_ZONE_BY_TAG % tag)
+    template_id = data['certificateIssuingTemplateId']
+    policy = get_policy_by_id(template_id)
+    z = Vcert::ZoneConfiguration.new()
+    return z
+  end
+
   private
 
   TOKEN_HEADER_NAME = "tppl-api-key"
-  URL_ZONE_BY_TAG = "zones/tag/"
+  URLS_ZONE_BY_TAG = "zones/tag/%s"
   URLS_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
   CERTIFICATE_REQUESTS = "certificaterequests"
   CERTIFICATE_STATUS = CERTIFICATE_REQUESTS + "/%s"
@@ -65,7 +72,7 @@ class Vcert::CloudConnection
   CERT_STATUS_ISSUED = 'ISSUED'
 
   def get_zoneId_by_tag(tag)
-    status, data = get(URL_ZONE_BY_TAG + tag)
+    status, data = get(URLS_ZONE_BY_TAG + tag)
     data['id']
   end
 
@@ -146,33 +153,28 @@ class Vcert::CloudConnection
     status, data = get(URLS_TEMPLATE_BY_ID % policy_id)
     if status != "200"
       raise("Invalid status during geting policy: %s for policy %s" % status, policy_id)
-
-      return parse_policy_responce_to_object(data)
     end
+    return parse_policy_responce_to_object(data)
   end
 
   def parse_policy_responce_to_object(d)
-    policy = Policy(
-        d["id"],
-        d["companyId"],
-        d["name"],
-        d["systemGenerated"],
-        d["creationDate"],
-        d["subjectCNRegexes"],
-        d["subjectORegexes"],
-        d["subjectOURegexes"],
-        d["subjectSTRegexes"],
-        d["subjectLRegexes"],
-        d["subjectCValues"],
-        d["sanRegexes"],
-        [],
-        d['keyReuse']
-    )
-    for kt in d.get('keyTypes', [])
-      key_type = kt['keyType'].lower()
-      if key_type == KeyTypes.RSA
+    policy = Vcert::Policy.new(policy_id: d['id'],
+                               name: d['name'],
+                               system_generated: d['systemGenerated'],
+                               creation_date: d['creationDate'],
+                               subject_cn_regexes: d['subjectCNRegexes'],
+                               subject_o_regexes: d['subjectORegexes'],
+                               subject_ou_regexes: d['subjectOURegexes'],
+                               subject_st_regexes: d['subjectSTRegexes'],
+                               subject_l_regexes: d['subjectLRegexes'],
+                               subject_c_regexes: d['subjectCValues'],
+                               san_regexes: d['sanRegexes'],
+                               key_types: d['keyTypes'])
+    for _,kt in d['keyTypes']
+      key_type = kt['keyType'].downcase
+      if key_type == "rsa"
         policy.key_types.append(KeyType(key_type = key_type, key_sizes = kt['keyLengths']))
-      elsif key_type == KeyTypes.ECDSA
+      elsif key_type == "ec"
         policy.key_types.append(KeyType(key_type = key_type, key_curves = kt['keyCurve']))
       else
         log.error("Unknow key type: %s" % kt['keyType'])
