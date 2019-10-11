@@ -12,19 +12,7 @@ conn = Vcert::Connection.new url: CLOUD_URL, cloud_token: CLOUD_TOKEN
 
 request = Vcert::Request.new common_name: "test.example.com", country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
-cert_id = conn.request(CLOUD_ZONE, request)
-i = 0
-loop do
-  certificate = conn.retrieve(cert_id)
-  if certificate != nil
-    break
-  end
-  if i > 10
-    raise "Too long waiting"
-  end
-  i +=1
-  sleep 10
-end
+certificate = conn.request_and_retrieve(request, CLOUD_ZONE, 600)
 
 
 puts certificate.cert
