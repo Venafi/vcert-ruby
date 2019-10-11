@@ -3,12 +3,12 @@ require 'openssl'
 
 module Vcert
   class Request
-    def initialize(common_name: nil, private_key: nil, key_type: KeyType.new("rsa", 2048),
+    def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
-      unless key_type.instance_of? KeyType
+      if key_type != nil && !key_type.instance_of?(KeyType)
         raise "key_type bad type. should be Vcert::KeyType. for example KeyType('rsa', 2048)"
       end
       @key_type = key_type
@@ -104,6 +104,9 @@ module Vcert
 
 
     def generate_private_key
+      if @key_type == nil
+        @key_type = KeyType.new("rsa", 2048)
+      end
       if @key_type.type == "rsa"
         @private_key =  OpenSSL::PKey::RSA.new @key_type.option
       elsif @key_type.type == "ecdsa"
