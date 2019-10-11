@@ -9,7 +9,6 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    puts(policy)
     data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     puts "Cert response:"
     puts JSON.pretty_generate(data)
@@ -43,11 +42,16 @@ class Vcert::CloudConnection
   end
 
   def read_zone_conf(tag)
-    status, data = get(URLS_ZONE_BY_TAG % tag)
+    _, data = get(URLS_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
     policy = get_policy_by_id(template_id)
     z = Vcert::ZoneConfiguration.new(
-      country: policy.co
+        country: Vcert::CertField.new(""),
+        province: Vcert::CertField.new(""),
+        locality: Vcert::CertField.new(""),
+        organization: Vcert::CertField.new(""),
+        organizational_unit: Vcert::CertField.new(""),
+        key_type: Vcert::CertField.new(""),
     )
     return z
   end
@@ -68,7 +72,7 @@ class Vcert::CloudConnection
   CERT_STATUS_ISSUED = 'ISSUED'
 
   def get_zoneId_by_tag(tag)
-    status, data = get(URLS_ZONE_BY_TAG + tag)
+    _, data = get(URLS_ZONE_BY_TAG % tag)
     data['id']
   end
 
@@ -119,9 +123,10 @@ class Vcert::CloudConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    cert = Vcert::Certificate.new
-    cert.cert = pems[0]
-    cert.chain = pems[1..-1]
+    cert = Vcert::Certificate.new(
+        cert: pems[0],
+        chain: pems[1..-1]
+    )
     cert
   end
 
