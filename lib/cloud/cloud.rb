@@ -170,18 +170,7 @@ class Vcert::CloudConnection
                                subject_c_regexes: d['subjectCValues'],
                                san_regexes: d['sanRegexes'],
                                key_types: d['keyTypes'])
-    for _,kt in d['keyTypes']
-      key_type = kt['keyType'].downcase
-      if key_type == "rsa"
-        policy.key_types.append(KeyType(key_type = key_type, key_sizes = kt['keyLengths']))
-      elsif key_type == "ec"
-        policy.key_types.append(KeyType(key_type = key_type, key_curves = kt['keyCurve']))
-      else
-        log.error("Unknow key type: %s" % kt['keyType'])
-        raise ServerUnexptedBehavior
-        return policy
-      end
-    end
+    return policy
   end
 end
 
