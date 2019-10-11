@@ -42,15 +42,13 @@ class Vcert::CloudConnection
     end
   end
 
-  def ping
-    true
-  end
-
   def read_zone_conf(tag)
     status, data = get(URLS_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
     policy = get_policy_by_id(template_id)
-    z = Vcert::ZoneConfiguration.new()
+    z = Vcert::ZoneConfiguration.new(
+      country: policy.co
+    )
     return z
   end
 

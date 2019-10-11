@@ -17,10 +17,6 @@ module Vcert
       @conn.request(*args)
     end
 
-    def ping
-      @conn.ping
-    end
-
     def retrieve(*args)
       @conn.retrieve(*args)
     end
