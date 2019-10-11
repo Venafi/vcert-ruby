@@ -19,7 +19,6 @@ class Vcert::CloudConnection
 
   def retrieve(request)
     puts("Getting certificate status for id %s" % request.id)
-    sleep(5)
     status, data = get(CERTIFICATE_STATUS % request.id)
     if status == "200" or status == "409"
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
@@ -29,7 +28,6 @@ class Vcert::CloudConnection
         puts("Status is %s. Returning data for debug" % data['status'])
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
-        sleep(1)
         status, full_chain = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == "200"
           cert = parse_full_chain full_chain

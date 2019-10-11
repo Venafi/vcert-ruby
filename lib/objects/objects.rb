@@ -106,7 +106,8 @@ module Vcert
   end
 
   class Certificate
-    attr_accessor :cert, :chain, :private_key
+    attr_accessor :private_key
+    attr_reader :cert, :chain
 
     def initialize(cert: nil, chain: nil, private_key: nil)
       @cert = cert
