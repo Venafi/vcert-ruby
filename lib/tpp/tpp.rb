@@ -17,7 +17,6 @@ class Vcert::TPPConnection
                   :DisableAutomaticRenewal =>  "true"}
     code, response = post URL_CERTIFICATE_REQUESTS, data
     if code != 200
-      puts response
       raise "Bad server status code #{code}"
     end
     request.id = response['CertificateDN']
@@ -25,7 +24,7 @@ class Vcert::TPPConnection
 
   def retrieve(request)
     retrieve_request = {CertificateDN: request.id, Format: "base64", IncludeChain: 'true', RootFirstOrder: "false"}
-    code, response = post CERTIFICATE_RETRIEVE, retrieve_request
+    code, response = post URL_CERTIFICATE_RETRIEVE, retrieve_request
     if code != 200
       return nil
     end
@@ -42,13 +41,27 @@ class Vcert::TPPConnection
   end
 
   def zone_configuration(zone_tag)
+    code, response = post URL_ZONE_CONFIG, {:PolicyDN =>  policy_dn(zone_tag)}
+    if code != 200
+      raise "Bad server status code #{code}"
+    end
+    s = response["Policy"]["Subject"]
+    country = Vcert::CertField.new s["Country"]["Value"], locked: s["Country"]["Locked"]
+    state = Vcert::CertField.new s["State"]["Value"], locked: s["State"]["Locked"]
+    city = Vcert::CertField.new s["City"]["Value"], locked: s["City"]["Locked"]
+    organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
+    organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
+    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], key_length: response["Policy"]["KeyPair"]["KeySize"]["Value"]
 
+    z = Vcert::ZoneConfiguration.new country, state, city, organization, organizational_unit, key_type
+    z
   end
 
   private
   URL_AUTHORIZE = "authorize/"
   URL_CERTIFICATE_REQUESTS = "certificates/request"
-  CERTIFICATE_RETRIEVE = "certificates/retrieve"
+  URL_ZONE_CONFIG = "certificates/checkpolicy"
+  URL_CERTIFICATE_RETRIEVE = "certificates/retrieve"
   TOKEN_HEADER_NAME = "x-venafi-api-key"
   def auth
     uri = URI.parse(@url)
