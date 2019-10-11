@@ -44,14 +44,17 @@ class Vcert::CloudConnection
   def read_zone_conf(tag)
     _, data = get(URLS_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
-    policy = get_policy_by_id(template_id)
+    _,data = get(URLS_TEMPLATE_BY_ID % template_id)
+    puts data['keyTypes'].inspect
+    puts data['keyTypes'][0]["keyLengths"][0].inspect
+    kt = Vcert::KeyType.new data['keyTypes'][0]["keyType"], option: data['keyTypes'][0]["keyLengths"][0].to_i
     z = Vcert::ZoneConfiguration.new(
         country: Vcert::CertField.new(""),
         province: Vcert::CertField.new(""),
         locality: Vcert::CertField.new(""),
         organization: Vcert::CertField.new(""),
         organizational_unit: Vcert::CertField.new(""),
-        key_type: Vcert::CertField.new(""),
+        key_type: kt,
     )
     return z
   end
@@ -159,6 +162,8 @@ class Vcert::CloudConnection
   end
 
   def parse_policy_responce_to_object(d)
+    key_types = []
+    d['keyTypes'].each { |kt| key_types.push(kt['keyType'])}
     policy = Vcert::Policy.new(policy_id: d['id'],
                                name: d['name'],
                                system_generated: d['systemGenerated'],
@@ -170,7 +175,7 @@ class Vcert::CloudConnection
                                subject_l_regexes: d['subjectLRegexes'],
                                subject_c_regexes: d['subjectCValues'],
                                san_regexes: d['sanRegexes'],
-                               key_types: d['keyTypes'])
+                               key_types: key_types)
     return policy
   end
 end
