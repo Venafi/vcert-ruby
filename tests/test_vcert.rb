@@ -56,10 +56,15 @@ class VcertTest < Minitest::Test
     conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
     req = Vcert::Request.new common_name: 'test432432423.example.com'
     cert = conn.request_and_retrieve req, TPP_ZONE,600
+    assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
+    assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
+  end
 
-    puts cert.cert
-    puts cert.private_key
-    assert_equal "123", "123"
+
+  def test_read_zone_configuration_tpp
+    conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
+
+    zone = conn.zone_configuration TPP_ZONE
   end
 
   def test_generate_csr
