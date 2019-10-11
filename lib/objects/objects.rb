@@ -106,7 +106,7 @@ module Vcert
       if @key_type == "rsa"
         @private_key =  OpenSSL::PKey::RSA.new @key_length
       elsif @key_type == "ecdsa"
-        @private_key = OpenSSL::PKey::EC.new @key_curve # todo: check
+        @private_key = OpenSSL::PKey::EC.new @key_curve
       end
     end
   end
@@ -169,6 +169,25 @@ module Vcert
     def initialize(value, locked: false )
       @value = value
       @locked = locked
+    end
+  end
+
+  class KeyType
+    def initialize(type, key_length: nil, key_curve: nil)
+      @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
+      if @type == nil
+          raise "bad key type"
+      end
+      if @type == "rsa"
+        if [512, 1024, 2048, 3072, 4096, 8192].include?(key_length)
+          @option = key_length
+        else
+          raise "bad option for rsa key: #{option}. should be one from list 512, 1024, 2048, 3072, 4096, 8192"
+        end
+      else
+        #todo: curve validations
+        @option = key_curve
+      end
     end
   end
 end
