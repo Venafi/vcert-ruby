@@ -3,8 +3,10 @@ require 'openssl'
 
 module Vcert
   class Request
+    attr_accessor :id
+
     def initialize(common_name: nil, private_key: nil, key_type: nil,
-                   organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
+                   organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
@@ -31,19 +33,19 @@ module Vcert
           ['CN', @common_name]
       ]
       if @organization != nil
-        subject_attrs.append(['O', @organization])
+        subject_attrs.push(['O', @organization])
       end
       if @organizational_unit != nil
-        subject_attrs.append(['OU', @organizational_unit])
+        subject_attrs.push(['OU', @organizational_unit])
       end
       if @country != nil
-        subject_attrs.append(['C', @country])
+        subject_attrs.push(['C', @country])
       end
-      if @province !=  nil
-        subject_attrs.append(['ST', @province])
+      if @province != nil
+        subject_attrs.push(['ST', @province])
       end
       if @locality != nil
-        subject_attrs.append(['L', @locality])
+        subject_attrs.push(['L', @locality])
       end
 
       subject = OpenSSL::X509::Name.new subject_attrs
@@ -89,26 +91,19 @@ module Vcert
       @common_name
     end
 
-    def id
-      @id
-    end
-
-    def id=(value)
-      @id = value
-    end
-
     def update_from_zone_config(zone_config)
 
     end
+
     private
 
 
     def generate_private_key
       if @key_type == nil
-        @key_type = KeyType.new("rsa", 2048)
+        @key_type = KeyType.new(type: "rsa", option: 2048)
       end
       if @key_type.type == "rsa"
-        @private_key =  OpenSSL::PKey::RSA.new @key_type.option
+        @private_key = OpenSSL::PKey::RSA.new @key_type.option
       elsif @key_type.type == "ecdsa"
         @private_key = OpenSSL::PKey::EC.new @key_type.option
       end
@@ -116,21 +111,22 @@ module Vcert
   end
 
   class Certificate
-    def initialize(cert, chain, private_key)
+    attr_accessor :private_key
+    attr_reader :cert, :chain
+
+    def initialize(cert: nil, chain: nil, private_key: nil)
       @cert = cert
       @chain = chain
       @private_key = private_key
     end
-    attr_reader :cert
-    attr_reader :chain
-    attr_accessor :private_key
   end
 
   class Policy
     attr_reader :policy_id, :name, :system_generated, :creation_date
-    def initialize(policy_id, name, system_generated, creation_date, subject_cn_regexes, subject_o_regexes,
-                   subject_ou_regexes, subject_st_regexes, subject_l_regexes, subject_c_regexes,  san_regexes,
-                   key_types)
+
+    def initialize(policy_id:, name:, system_generated:, creation_date:, subject_cn_regexes:, subject_o_regexes:,
+                   subject_ou_regexes:, subject_st_regexes:, subject_l_regexes:, subject_c_regexes:, san_regexes:,
+                   key_types:)
       @policy_id = policy_id
       @name = name
       @system_generated = system_generated
@@ -150,6 +146,7 @@ module Vcert
     end
 
     private
+
     def check_string_match_regexps(s, regexps)
       return true
     end
@@ -157,8 +154,9 @@ module Vcert
   end
 
   class ZoneConfiguration
-    attr_reader  :country, :province, :locality, :organization, :organizational_unit, :key_type
-    def initialize(country, province, locality, organization, organizational_unit, key_type)
+    attr_reader :country, :province, :locality, :organization, :organizational_unit, :key_type
+
+    def initialize(country:, province:, locality:, organization:, organizational_unit:, key_type:)
       @country = country
       @province = province
       @locality = locality
@@ -170,7 +168,8 @@ module Vcert
 
   class CertField
     attr_reader :value, :locked
-    def initialize(value, locked: false )
+
+    def initialize(value, locked: false)
       @value = value
       @locked = locked
     end
@@ -178,10 +177,11 @@ module Vcert
 
   class KeyType
     attr_reader :type, :option
-    def initialize(type, option)
+
+    def initialize(type:, option:)
       @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
       if @type == nil
-          raise "bad key type"
+        raise "bad key type"
       end
       if @type == "rsa"
         if [512, 1024, 2048, 3072, 4096, 8192].include?(option)
