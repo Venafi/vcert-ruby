@@ -99,7 +99,7 @@ module Vcert
 
     def generate_private_key
       if @key_type == nil
-        @key_type = KeyType.new("rsa", 2048)
+        @key_type = KeyType.new(type: "rsa",option: 2048)
       end
       if @key_type.type == "rsa"
         @private_key =  OpenSSL::PKey::RSA.new @key_type.option
@@ -172,7 +172,7 @@ module Vcert
 
   class KeyType
     attr_reader :type, :option
-    def initialize(type, option)
+    def initialize(type:, option:)
       @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
       if @type == nil
           raise "bad key type"

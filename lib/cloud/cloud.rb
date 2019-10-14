@@ -47,7 +47,7 @@ class Vcert::CloudConnection
     _,data = get(URLS_TEMPLATE_BY_ID % template_id)
     puts data['keyTypes'].inspect
     puts data['keyTypes'][0]["keyLengths"][0].inspect
-    kt = Vcert::KeyType.new data['keyTypes'][0]["keyType"], option: data['keyTypes'][0]["keyLengths"][0].to_i
+    kt = Vcert::KeyType.new type: data['keyTypes'][0]["keyType"], option: data['keyTypes'][0]["keyLengths"][0].to_i
     z = Vcert::ZoneConfiguration.new(
         country: Vcert::CertField.new(""),
         province: Vcert::CertField.new(""),
