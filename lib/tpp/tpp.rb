@@ -11,10 +11,10 @@ class Vcert::TPPConnection
   end
 
   def request(zone_tag, request)
-    data={:PolicyDN => policy_dn(zone_tag),
-                  :PKCS10 => request.csr,
-                  :ObjectName =>  request.friendly_name,
-                  :DisableAutomaticRenewal =>  "true"}
+    data = {:PolicyDN => policy_dn(zone_tag),
+            :PKCS10 => request.csr,
+            :ObjectName => request.friendly_name,
+            :DisableAutomaticRenewal => "true"}
     code, response = post URL_CERTIFICATE_REQUESTS, data
     if code != 200
       raise "Bad server status code #{code}"
@@ -37,11 +37,101 @@ class Vcert::TPPConnection
   end
 
   def policy(zone_tag)
+    code, response = post URL_ZONE_CONFIG, {:PolicyDN => policy_dn(zone_tag)}
+    if code != 200
+      raise "Bad server status code #{code}"
+    end
+
+    def addStartEnd(s)
+      ALL_ALLOWED_REGEX = ".*"
+      unless s.index("^") == 0
+        s = "^" + s
+      end
+      unless s.end_with?("$")
+        s = s + "$"
+      end
+      s
+    end
+
+    def escape(value)
+      if value.kind_of? Array
+        return value.map { |v| addStartEnd(Regexp.escape(v)) }
+      else
+        return addStartEnd(regexp.QuoteMeta(value))
+      end
+    end
+
+    if response["WhitelistedDomains"]
+      if sp["WildcardsAllowed"]
+        subjectCNRegex = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
+      else
+        subjectCNRegex = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+      end
+    else
+      subjectCNRegex = [ALL_ALLOWED_REGEX]
+    end
+    s = response["Subject"]
+    if s["OrganizationalUnit"]["Locked"]
+      subjectOURegexes = escape(s["OrganizationalUnit"]["Values"])
+    else
+      subjectOURegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["Organization"]["Locked"]
+      subjectORegexes = [escape(s["Organization"]["Value"])]
+    else
+      subjectORegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["City"]["Locked"]
+      subjectLRegexes = [escape(s["City"]["Value"])]
+    else
+      subjectLRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["State"]["Locked"]
+      subjectSTRegexes = [escape(s["State"]["Value"])]
+    else
+      subjectSTRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["Country"]["Locked"]
+      subjectCRegexes = [escape(s["Country"]["Value"])]
+    else
+      subjectCRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if response["SubjAltNameDnsAllowed"]
+      if len(response["WhitelistedDomains"]) == 0
+        dnsSanRegExs = [ALL_ALLOWED_REGEX]
+      else
+        dnsSanRegExs = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+      end
+    else
+      dnsSanRegExs = []
+    end
+    if response["SubjAltNameIpAllowed"]
+      ipSanRegExs = [ALL_ALLOWED_REGEX]
+    else
+      ipSanRegExs = []
+    end
+    if response["SubjAltNameEmailAllowed"]
+      emailSanRegExs = [ALL_ALLOWED_REGEX]
+    else
+      emailSanRegExs = []
+    end
+    if response["SubjAltNameUriAllowed"]
+      uriSanRegExs = [ALL_ALLOWED_REGEX]
+    else
+      uriSanRegExs = []
+    end
+
+    if response["SubjAltNameUpnAllowed"]
+      upnSanRegExs = [ALL_ALLOWED_REGEX]
+    else
+      upnSanRegExs = []
+    end
 
   end
 
+
   def zone_configuration(zone_tag)
-    code, response = post URL_ZONE_CONFIG, {:PolicyDN =>  policy_dn(zone_tag)}
+    code, response = post URL_ZONE_CONFIG, {:PolicyDN => policy_dn(zone_tag)}
     if code != 200
       raise "Bad server status code #{code}"
     end
@@ -52,26 +142,27 @@ class Vcert::TPPConnection
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
     key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], key_length: response["Policy"]["KeyPair"]["KeySize"]["Value"]
-
     z = Vcert::ZoneConfiguration.new country, state, city, organization, organizational_unit, key_type
     z
   end
 
   private
+
   URL_AUTHORIZE = "authorize/"
   URL_CERTIFICATE_REQUESTS = "certificates/request"
   URL_ZONE_CONFIG = "certificates/checkpolicy"
   URL_CERTIFICATE_RETRIEVE = "certificates/retrieve"
   TOKEN_HEADER_NAME = "x-venafi-api-key"
+
   def auth
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE  # todo: investigate verifying
+    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + URL_AUTHORIZE
     data = {:Username => @user, :Password => @password}
     encoded_data = JSON.generate(data)
-    response = request.post(url ,encoded_data, {"Content-Type" => "application/json"})
+    response = request.post(url, encoded_data, {"Content-Type" => "application/json"})
     data = JSON.parse(response.body)
     token = data['APIKey']
     valid_until = DateTime.strptime(data['ValidUntil'].gsub(/\D/, ''), '%Q')
@@ -88,7 +179,7 @@ class Vcert::TPPConnection
     request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + url
     encoded_data = JSON.generate(data)
-    response = request.post(url, encoded_data,  {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
+    response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
     data = JSON.parse(response.body)
     return response.code.to_i, data
   end
@@ -100,9 +191,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE  # todo: investigate verifying
+    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + url
-    response = request.get(url,{TOKEN_HEADER_NAME => @token[0]})
+    response = request.get(url, {TOKEN_HEADER_NAME => @token[0]})
     data = JSON.parse(response.body)
     return response.code.to_i, data
   end
@@ -124,7 +215,7 @@ class Vcert::TPPConnection
   def normalize_url(url)
     if url.index('http://') == 0
       url = "https://" + url[7..-1]
-    elsif url.index('https://') !=0
+    elsif url.index('https://') != 0
       url = 'https://' + url
     end
     unless url.end_with?('/')
@@ -141,7 +232,7 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new  pems[0], pems[1..-1], nil # todo: parser
+    Vcert::Certificate.new pems[0], pems[1..-1], nil # todo: parser
   end
 
   def parse_pem_list(multiline)
