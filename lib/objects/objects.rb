@@ -1,4 +1,6 @@
 require 'openssl'
+require "logger"
+LOG = Logger.new(STDOUT)
 
 
 module Vcert
