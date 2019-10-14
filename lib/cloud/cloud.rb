@@ -10,21 +10,21 @@ class Vcert::CloudConnection
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
     data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
-    puts "Cert response:"
-    puts JSON.pretty_generate(data)
+    LOG.info("Cert response:")
+    LOG.info(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
     request
   end
 
   def retrieve(request)
-    puts("Getting certificate status for id %s" % request.id)
+    LOG.info(("Getting certificate status for id %s" % request.id))
     status, data = get(CERTIFICATE_STATUS % request.id)
     if status == "200" or status == "409"
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
-        puts("Certificate status is %s." % data['status'])
+        LOG.info(("Certificate status is %s." % data['status']))
         return nil
       elsif data['status'] == CERT_STATUS_FAILED
-        puts("Status is %s. Returning data for debug" % data['status'])
+        LOG.info(("Status is %s. Returning data for debug" % data['status']))
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
         status, full_chain = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
@@ -89,7 +89,7 @@ class Vcert::CloudConnection
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
     case response.code
     when "200", "201", "202", "409"
-      puts("HTTP status OK")
+      LOG.info(("HTTP status OK"))
     else
       raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
     end
