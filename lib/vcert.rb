@@ -25,6 +25,10 @@ module Vcert
       @conn.revoke(*args)
     end
 
+    def renew(*args)
+      @conn.renew(*args)
+    end
+
     def read_zone_conf(*args)
       @conn.read_zone_conf(*args)
     end

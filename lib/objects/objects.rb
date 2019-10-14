@@ -3,7 +3,7 @@ require 'openssl'
 
 module Vcert
   class Request
-    attr_accessor :id
+    attr_accessor :id, :thumbprint
 
     def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil,  organizational_unit: nil, country: nil, province: nil, locality:nil, san_dns:nil,
@@ -22,6 +22,7 @@ module Vcert
       @san_dns = san_dns
       @friendly_name = friendly_name
       @id = nil
+      @thumbprint = nil
       @csr = csr
     end
 

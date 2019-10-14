@@ -41,6 +41,13 @@ class Vcert::CloudConnection
     end
   end
 
+  def renew(request)
+    puts("Trying to renew certificate")
+    if request.id == nil || request.thumbprint == nil
+      raise("request id or certificate thumbprint must be specified for renewing certificate")
+    end
+  end
+
   def read_zone_conf(tag)
     _, data = get(URLS_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
