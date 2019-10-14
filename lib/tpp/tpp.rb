@@ -43,7 +43,6 @@ class Vcert::TPPConnection
     end
 
     def addStartEnd(s)
-      ALL_ALLOWED_REGEX = ".*"
       unless s.index("^") == 0
         s = "^" + s
       end
@@ -60,17 +59,17 @@ class Vcert::TPPConnection
         return addStartEnd(regexp.QuoteMeta(value))
       end
     end
-
-    if response["WhitelistedDomains"]
-      if sp["WildcardsAllowed"]
-        subjectCNRegex = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
+    policy = response["Policy"]
+    s = policy["Subject"]
+    if policy["WhitelistedDomains"]
+      if policy["WildcardsAllowed"]
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
       else
-        subjectCNRegex = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
       end
     else
       subjectCNRegex = [ALL_ALLOWED_REGEX]
     end
-    s = response["Subject"]
     if s["OrganizationalUnit"]["Locked"]
       subjectOURegexes = escape(s["OrganizationalUnit"]["Values"])
     else
@@ -96,37 +95,54 @@ class Vcert::TPPConnection
     else
       subjectCRegexes = [ALL_ALLOWED_REGEX]
     end
-    if response["SubjAltNameDnsAllowed"]
-      if len(response["WhitelistedDomains"]) == 0
+    if policy["SubjAltNameDnsAllowed"]
+      if policy["WhitelistedDomains"].length == 0
         dnsSanRegExs = [ALL_ALLOWED_REGEX]
       else
-        dnsSanRegExs = response["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+        dnsSanRegExs = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
       end
     else
       dnsSanRegExs = []
     end
-    if response["SubjAltNameIpAllowed"]
-      ipSanRegExs = [ALL_ALLOWED_REGEX]
+    if policy["SubjAltNameIpAllowed"]
+      ipSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
     else
       ipSanRegExs = []
     end
-    if response["SubjAltNameEmailAllowed"]
-      emailSanRegExs = [ALL_ALLOWED_REGEX]
+    if policy["SubjAltNameEmailAllowed"]
+      emailSanRegExs = [ALL_ALLOWED_REGEX]  # todo: support
     else
       emailSanRegExs = []
     end
-    if response["SubjAltNameUriAllowed"]
-      uriSanRegExs = [ALL_ALLOWED_REGEX]
+    if policy["SubjAltNameUriAllowed"]
+      uriSanRegExs = [ALL_ALLOWED_REGEX]  # todo: support
     else
       uriSanRegExs = []
     end
 
-    if response["SubjAltNameUpnAllowed"]
-      upnSanRegExs = [ALL_ALLOWED_REGEX]
+    if policy["SubjAltNameUpnAllowed"]
+      upnSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
     else
       upnSanRegExs = []
     end
+    unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
+      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + ["prime256v1"].map{|c| Vcert::KeyType.new("ec", c)} #todo: add all curves
+    else
+      if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
+        if policy["KeyPair"]["KeySize"]["Locked"]
+          key_types = [Vcert::KeyType.new("rsa", policy["KeyPair"]["KeySize"]["Value"])]
+        else
+          key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) }
+        end
+      elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
+        # todo: Write
+      end
+    end
 
+    p = Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, subject_cn_regexes: subjectCNRegex,
+        subject_o_regexes: subjectORegexes, subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
+                      subject_l_regexes: subjectLRegexes, subject_c_regexes:subjectCRegexes, san_regexes:dnsSanRegExs,
+        key_types: key_types)
   end
 
 
@@ -153,7 +169,7 @@ class Vcert::TPPConnection
   URL_ZONE_CONFIG = "certificates/checkpolicy"
   URL_CERTIFICATE_RETRIEVE = "certificates/retrieve"
   TOKEN_HEADER_NAME = "x-venafi-api-key"
-
+  ALL_ALLOWED_REGEX = ".*"
   def auth
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
