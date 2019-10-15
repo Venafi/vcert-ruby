@@ -1,11 +1,14 @@
 require 'json'
 
 class CertificateStatusResponse
+
+  attr_reader :status, :subject, :zoneId, :manage_id
+
   def initialize(d)
-    status = d.get('status')
-    subject = d.get('subjectDN') or d.get('subjectCN')[0]
-    zoneId = d.get('zoneId')
-    manage_id = d.get('managedCertificateId')
+    @status = d['status']
+    @subject = d['subjectDN'] or d['subjectCN'][0]
+    @zoneId = d['zoneId']
+    @manage_id = d['managedCertificateId']
   end
 end
 
@@ -18,7 +21,7 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    _,data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     LOG.info("Cert response:")
     LOG.info(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
@@ -52,7 +55,7 @@ class Vcert::CloudConnection
 
   def renew(request)
     puts("Trying to renew certificate")
-    if request.id == nil || request.thumbprint == nil
+    if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
     end
     if request.thumbprint != nil
@@ -60,7 +63,7 @@ class Vcert::CloudConnection
       manage_id = r.manage_id
     end
     if request.id != nil
-      prev_request = get_cert_status(request.id)
+      prev_request = get_cert_status(request)
       manage_id = prev_request.manage_id
       zone = prev_request.zoneId
     end
@@ -76,8 +79,23 @@ class Vcert::CloudConnection
     end
 
     if zone == nil
-      prev_request = get_cert_status(request.id)
+      prev_request = get_cert_status(request)
       zone = prev_request.zoneId
+    end
+
+    d = {existingManagedCertificateId: manage_id, zoneId: zone}
+    if request.csr != nil
+      d.merge!(certificateSigningRequest: request.csr)
+      d.merge!(reuseCSR: false)
+    else
+      d.merge!(reuseCSR: true)
+    end
+
+    status, data = post(URL_CERTIFICATE_REQUESTS, data=d)
+    if status == "201"
+      return data['certificateRequests'][0]['id']
+    else
+      raise "server unexpected status: #{status}\n message: #{data}"
     end
 
   end
@@ -162,7 +180,7 @@ class Vcert::CloudConnection
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
 
     data = JSON.parse(response.body)
-    data
+    return response.code, data
   end
 
   def parse_full_chain(full_chain)
@@ -227,7 +245,7 @@ class Vcert::CloudConnection
   def get_cert_status(request)
     status, data = get(URL_CERTIFICATE_STATUS % request.id)
     if status == "200"
-      request_status = CertificateStatusResponse(data)
+      request_status = CertificateStatusResponse.new(data)
       return request_status
     elsif raise "Server unexpted behavior"
     end

@@ -43,15 +43,22 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_cloud
+    cn = random_domain
     conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
-    LOG.info("Requesting cert with CN #{random_domain}")
+    LOG.info("Requesting cert with CN #{cn}")
     kt = Vcert::KeyType.new("rsa", 4096)
-    request = Vcert::Request.new(common_name: random_domain, country: "US", key_type: kt)
+    request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt)
     zone_config = conn.read_zone_conf(CLOUDZONE)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
     LOG.info(("cert is:\n"+cert.cert))
     LOG.info(("pk is:\n"+cert.private_key))
+    new_request =  Vcert::Request.new(common_name: cn)
+    new_request.id = request.id
+    new_cert_id = conn.renew(new_request)
+    new_request.id = new_cert_id
+    new_cert = conn.retrieve(new_request)
+    LOG.info(("renewd cert is:\n"+new_cert.cert))
   end
 
   def test_request_tpp
