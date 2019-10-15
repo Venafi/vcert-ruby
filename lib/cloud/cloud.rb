@@ -61,6 +61,23 @@ class Vcert::CloudConnection
     end
     if request.id != nil
       prev_request = get_cert_status(request.id)
+      manage_id = prev_request.manage_id
+      zone = prev_request.zoneId
+    end
+    if manage_id == nil
+      raise "Can`t find manage_id"
+    end
+
+    status, data = get(URL_MANAGED_CERTIFICATE_BY_ID % manage_id)
+    if status == "200"
+      request.id = data['latestCertificateRequestId']
+    else
+      raise "Server Unexpted Behavior"
+    end
+
+    if zone == nil
+      prev_request = get_cert_status(request.id)
+      zone = prev_request.zoneId
     end
 
   end
@@ -95,6 +112,8 @@ class Vcert::CloudConnection
   URL_CERTIFICATE_REQUESTS = "certificaterequests"
   URL_CERTIFICATE_STATUS = URL_CERTIFICATE_REQUESTS + "/%s"
   URL_CERTIFICATE_RETRIEVE = URL_CERTIFICATE_REQUESTS + "/%s/certificate"
+  URL_MANAGED_CERTIFICATES = "managedcertificates"
+  URL_MANAGED_CERTIFICATE_BY_ID = URL_MANAGED_CERTIFICATES + "/%s"
 
   def get_zoneId_by_tag(tag)
     _, data = get(URL_ZONE_BY_TAG % tag)
