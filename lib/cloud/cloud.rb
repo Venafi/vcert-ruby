@@ -1,5 +1,14 @@
 require 'json'
 
+class CertificateStatusResponse
+  def initialize(d)
+    status = d.get('status')
+    subject = d.get('subjectDN') or d.get('subjectCN')[0]
+    zoneId = d.get('zoneId')
+    manage_id = d.get('managedCertificateId')
+  end
+end
+
 class Vcert::CloudConnection
   def initialize(url, token)
     @url = url
@@ -9,7 +18,7 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    data = post(CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    data = post(URLS_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     LOG.info("Cert response:")
     LOG.info(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
@@ -18,7 +27,7 @@ class Vcert::CloudConnection
 
   def retrieve(request)
     LOG.info(("Getting certificate status for id %s" % request.id))
-    status, data = get(CERTIFICATE_STATUS % request.id)
+    status, data = get(URLS_CERTIFICATE_STATUS % request.id)
     if status == "200" or status == "409"
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
         LOG.info(("Certificate status is %s." % data['status']))
@@ -27,7 +36,7 @@ class Vcert::CloudConnection
         LOG.info(("Status is %s. Returning data for debug" % data['status']))
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
-        status, full_chain = get(CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
+        status, full_chain = get(URLS_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == "200"
           cert = parse_full_chain full_chain
           if cert.private_key == nil
@@ -46,12 +55,20 @@ class Vcert::CloudConnection
     if request.id == nil || request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
     end
+    if request.thumbprint != nil
+      r = search_by_thumbprint(request.thumbprint)
+      manage_id = r.manage_id
+    end
+    if request.id != nil
+      prev_request = get_cert_status(request.id)
+    end
+
   end
 
   def read_zone_conf(tag)
     _, data = get(URLS_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
-    _,data = get(URLS_TEMPLATE_BY_ID % template_id)
+    _, data = get(URLS_TEMPLATE_BY_ID % template_id)
     kt = Vcert::KeyType.new type: data['keyTypes'][0]["keyType"], option: data['keyTypes'][0]["keyLengths"][0].to_i
     z = Vcert::ZoneConfiguration.new(
         country: Vcert::CertField.new(""),
@@ -67,17 +84,17 @@ class Vcert::CloudConnection
   private
 
   TOKEN_HEADER_NAME = "tppl-api-key"
-  URLS_ZONE_BY_TAG = "zones/tag/%s"
-  URLS_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
-  CERTIFICATE_REQUESTS = "certificaterequests"
-  CERTIFICATE_STATUS = CERTIFICATE_REQUESTS + "/%s"
-  CERTIFICATE_RETRIEVE = CERTIFICATE_REQUESTS + "/%s/certificate"
   CHAIN_OPTION_ROOT_FIRST = "ROOT_FIRST"
   CHAIN_OPTION_ROOT_LAST = "EE_FIRST"
   CERT_STATUS_REQUESTED = 'REQUESTED'
   CERT_STATUS_PENDING = 'PENDING'
   CERT_STATUS_FAILED = 'FAILED'
   CERT_STATUS_ISSUED = 'ISSUED'
+  URLS_ZONE_BY_TAG = "zones/tag/%s"
+  URLS_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
+  URLS_CERTIFICATE_REQUESTS = "certificaterequests"
+  URLS_CERTIFICATE_STATUS = URLS_CERTIFICATE_REQUESTS + "/%s"
+  URLS_CERTIFICATE_RETRIEVE = URLS_CERTIFICATE_REQUESTS + "/%s/certificate"
 
   def get_zoneId_by_tag(tag)
     _, data = get(URLS_ZONE_BY_TAG % tag)
@@ -168,7 +185,7 @@ class Vcert::CloudConnection
 
   def parse_policy_responce_to_object(d)
     key_types = []
-    d['keyTypes'].each { |kt| key_types.push(kt['keyType'])}
+    d['keyTypes'].each { |kt| key_types.push(kt['keyType']) }
     policy = Vcert::Policy.new(policy_id: d['id'],
                                name: d['name'],
                                system_generated: d['systemGenerated'],
@@ -183,5 +200,19 @@ class Vcert::CloudConnection
                                key_types: key_types)
     return policy
   end
+
+  def search_by_thumbprint(request)
+
+  end
+
+  def get_cert_status(request)
+    status, data = get(URLS_CERTIFICATE_STATUS % request.id)
+    if status == "200"
+      request_status = CertificateStatusResponse(data)
+      return request_status
+    elsif raise "Server unexpted behavior"
+    end
+  end
+
 end
 
