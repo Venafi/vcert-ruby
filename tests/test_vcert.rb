@@ -8,6 +8,7 @@ CLOUDZONE = ENV['CLOUDZONE']
 TPPURL = ENV['TPPURL']
 TPPUSER = ENV['TPPUSER']
 TPPPASSWORD = ENV['TPPPASSWORD']
+TPPZONE = ENV["TPPZONE"]
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -54,18 +55,24 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
+    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
     req = Vcert::Request.new common_name: 'test432432423.example.com'
-    cert = conn.request_and_retrieve req, TPP_ZONE,600
+    cert = conn.request_and_retrieve req, TPPZONE,600
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
     assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
   end
 
 
   def test_read_zone_configuration_tpp
-    conn = Vcert::Connection.new url: TPP_URL, user: TPP_USER, password: TPP_PASSWORD
+    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
 
-    zone = conn.zone_configuration TPP_ZONE
+    zone = conn.zone_configuration TPPZONE
+  end
+
+  def test_read_policy_tpp
+    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+
+    policy = conn.policy TPPZONE
   end
 
   def test_generate_csr

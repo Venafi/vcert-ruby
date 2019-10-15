@@ -127,7 +127,7 @@ module Vcert
   class Policy
     attr_reader :policy_id, :name, :system_generated, :creation_date
 
-    def initialize(policy_id:, name:, system_generated:, creation_date:, subject_cn_regexes:, subject_o_regexes:,
+    def initialize(policy_id:, name:, system_generated: nil, creation_date: nil, subject_cn_regexes:, subject_o_regexes:,
                    subject_ou_regexes:, subject_st_regexes:, subject_l_regexes:, subject_c_regexes:, san_regexes:,
                    key_types:)
       @policy_id = policy_id
@@ -180,8 +180,7 @@ module Vcert
 
   class KeyType
     attr_reader :type, :option
-
-    def initialize(type:, option:)
+    def initialize(type, option)
       @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
       if @type == nil
         raise "bad key type"
