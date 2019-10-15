@@ -75,7 +75,7 @@ module Vcert
 
     def csr
       # TODO: find a way to pass CSR generation if renew is requested
-      if @csr == nil
+      if @csr == nil && @common_name != nil
         generate_csr
       end
       @csr

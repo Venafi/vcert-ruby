@@ -53,7 +53,7 @@ class VcertTest < Minitest::Test
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
     LOG.info(("cert is:\n"+cert.cert))
     LOG.info(("pk is:\n"+cert.private_key))
-    new_request =  Vcert::Request.new(common_name: cn)
+    new_request =  Vcert::Request.new
     new_request.id = request.id
     new_cert_id = conn.renew(new_request)
     new_request.id = new_cert_id
