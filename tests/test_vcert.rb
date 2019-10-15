@@ -45,7 +45,7 @@ class VcertTest < Minitest::Test
   def test_request_cloud
     conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     LOG.info("Requesting cert with CN #{random_domain}")
-    kt = Vcert::KeyType.new(type: "rsa", option: 4096)
+    kt = Vcert::KeyType.new("rsa", 4096)
     request = Vcert::Request.new(common_name: random_domain, country: "US", key_type: kt)
     zone_config = conn.read_zone_conf(CLOUDZONE)
     request.update_from_zone_config(zone_config)
