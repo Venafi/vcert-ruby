@@ -1,3 +1,4 @@
+require "test/unit/assertions"
 require 'minitest/autorun'
 require 'vcert'
 require 'openssl'
@@ -51,20 +52,30 @@ class VcertTest < Minitest::Test
     zone_config = conn.read_zone_conf(CLOUDZONE)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
-    LOG.info(("cert is:\n"+cert.cert))
-    LOG.info(("pk is:\n"+cert.private_key))
-    new_request =  Vcert::Request.new
-    new_request.id = request.id
-    new_cert_id = conn.renew(new_request)
-    new_request.id = new_cert_id
-    new_cert = conn.retrieve(new_request)
-    LOG.info(("renewd cert is:\n"+new_cert.cert))
+    LOG.info(("cert is:\n" + cert.cert))
+    LOG.info(("pk is:\n" + cert.private_key))
+
+    certificate_object = OpenSSL::X509::Certificate.new(cert.cert)
+    key_object = OpenSSL::PKey::RSA.new(cert.private_key)
+    assert certificate_object.check_private_key(key_object)
+
+    renew_request = Vcert::Request.new
+    renew_request.id = request.id
+    renew_cert_id = conn.renew(renew_request)
+    renew_request.id = renew_cert_id
+    renew_cert = conn.retrieve(renew_request)
+    LOG.info(("renewd cert is:\n" + renew_cert.cert))
+    renew_certificate_object = OpenSSL::X509::Certificate.new(renew_cert.cert)
+    assert renew_certificate_object.check_private_key(key_object), "Renewed cert not signed by original jey"
+    assert (certificate_object.serial != renew_certificate_object.serial), "Original cert sn and renew sn are equal"
+    assert (certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1] == renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1])
+
   end
 
   def test_request_tpp
     conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
     req = Vcert::Request.new common_name: 'test432432423.example.com'
-    cert = conn.request_and_retrieve req, TPPZONE,600
+    cert = conn.request_and_retrieve req, TPPZONE, 600
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
     assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
   end
