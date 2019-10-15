@@ -18,7 +18,7 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    data = post(URLS_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     LOG.info("Cert response:")
     LOG.info(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
@@ -27,7 +27,7 @@ class Vcert::CloudConnection
 
   def retrieve(request)
     LOG.info(("Getting certificate status for id %s" % request.id))
-    status, data = get(URLS_CERTIFICATE_STATUS % request.id)
+    status, data = get(URL_CERTIFICATE_STATUS % request.id)
     if status == "200" or status == "409"
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
         LOG.info(("Certificate status is %s." % data['status']))
@@ -36,7 +36,7 @@ class Vcert::CloudConnection
         LOG.info(("Status is %s. Returning data for debug" % data['status']))
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
-        status, full_chain = get(URLS_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
+        status, full_chain = get(URL_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == "200"
           cert = parse_full_chain full_chain
           if cert.private_key == nil
@@ -66,9 +66,9 @@ class Vcert::CloudConnection
   end
 
   def read_zone_conf(tag)
-    _, data = get(URLS_ZONE_BY_TAG % tag)
+    _, data = get(URL_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
-    _, data = get(URLS_TEMPLATE_BY_ID % template_id)
+    _, data = get(URL_TEMPLATE_BY_ID % template_id)
     kt = Vcert::KeyType.new data['keyTypes'][0]["keyType"], data['keyTypes'][0]["keyLengths"][0].to_i
     z = Vcert::ZoneConfiguration.new(
         country: Vcert::CertField.new(""),
@@ -90,14 +90,14 @@ class Vcert::CloudConnection
   CERT_STATUS_PENDING = 'PENDING'
   CERT_STATUS_FAILED = 'FAILED'
   CERT_STATUS_ISSUED = 'ISSUED'
-  URLS_ZONE_BY_TAG = "zones/tag/%s"
-  URLS_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
-  URLS_CERTIFICATE_REQUESTS = "certificaterequests"
-  URLS_CERTIFICATE_STATUS = URLS_CERTIFICATE_REQUESTS + "/%s"
-  URLS_CERTIFICATE_RETRIEVE = URLS_CERTIFICATE_REQUESTS + "/%s/certificate"
+  URL_ZONE_BY_TAG = "zones/tag/%s"
+  URL_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
+  URL_CERTIFICATE_REQUESTS = "certificaterequests"
+  URL_CERTIFICATE_STATUS = URL_CERTIFICATE_REQUESTS + "/%s"
+  URL_CERTIFICATE_RETRIEVE = URL_CERTIFICATE_REQUESTS + "/%s/certificate"
 
   def get_zoneId_by_tag(tag)
-    _, data = get(URLS_ZONE_BY_TAG % tag)
+    _, data = get(URL_ZONE_BY_TAG % tag)
     data['id']
   end
 
@@ -176,7 +176,7 @@ class Vcert::CloudConnection
   end
 
   def get_policy_by_id(policy_id)
-    status, data = get(URLS_TEMPLATE_BY_ID % policy_id)
+    status, data = get(URL_TEMPLATE_BY_ID % policy_id)
     if status != "200"
       raise("Invalid status during geting policy: %s for policy %s" % status, policy_id)
     end
@@ -206,7 +206,7 @@ class Vcert::CloudConnection
   end
 
   def get_cert_status(request)
-    status, data = get(URLS_CERTIFICATE_STATUS % request.id)
+    status, data = get(URL_CERTIFICATE_STATUS % request.id)
     if status == "200"
       request_status = CertificateStatusResponse(data)
       return request_status
