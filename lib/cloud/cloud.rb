@@ -31,7 +31,7 @@ class Vcert::CloudConnection
   def retrieve(request)
     LOG.info(("Getting certificate status for id %s" % request.id))
     status, data = get(URL_CERTIFICATE_STATUS % request.id)
-    if status == "200" or status == "409"
+    if [200, 409].include? status
       if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
         LOG.info(("Certificate status is %s." % data['status']))
         return nil
@@ -40,7 +40,7 @@ class Vcert::CloudConnection
         raise "Certificate issue FAILED"
       elsif data['status'] == CERT_STATUS_ISSUED
         status, full_chain = get(URL_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
-        if status == "200"
+        if status == 200
           cert = parse_full_chain full_chain
           if cert.private_key == nil
             cert.private_key = request.private_key
@@ -72,7 +72,7 @@ class Vcert::CloudConnection
     end
 
     status, data = get(URL_MANAGED_CERTIFICATE_BY_ID % manage_id)
-    if status == "200"
+    if status == 200
       request.id = data['latestCertificateRequestId']
     else
       raise "Server Unexpted Behavior"
@@ -92,7 +92,7 @@ class Vcert::CloudConnection
     end
 
     status, data = post(URL_CERTIFICATE_REQUESTS, data=d)
-    if status == "201"
+    if status == 201
       return data['certificateRequests'][0]['id']
     else
       raise "server unexpected status: #{status}\n message: #{data}"
@@ -148,8 +148,8 @@ class Vcert::CloudConnection
 
 
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
-    case response.code
-    when "200", "201", "202", "409"
+    case response.code.to_i
+    when 200, 201, 202, 409
       LOG.info(("HTTP status OK"))
     else
       raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
@@ -166,7 +166,7 @@ class Vcert::CloudConnection
       raise "Can't process content-type #{response.header['content-type']}"
     end
     # rescue *ALL_NET_HTTP_ERRORS
-    return response.code, data
+    return response.code.to_i, data
     # end
   end
 
@@ -180,7 +180,7 @@ class Vcert::CloudConnection
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
 
     data = JSON.parse(response.body)
-    return response.code, data
+    return response.code.to_i, data
   end
 
   def parse_full_chain(full_chain)
@@ -214,7 +214,7 @@ class Vcert::CloudConnection
 
   def get_policy_by_id(policy_id)
     status, data = get(URL_TEMPLATE_BY_ID % policy_id)
-    if status != "200"
+    if status != 200
       raise("Invalid status during geting policy: %s for policy %s" % status, policy_id)
     end
     return parse_policy_responce_to_object(data)
@@ -238,13 +238,14 @@ class Vcert::CloudConnection
     return policy
   end
 
-  def search_by_thumbprint(request)
+  def search_by_thumbprint(thumbprint)
+    thumbprint = thumbprint.upcase
 
   end
 
   def get_cert_status(request)
     status, data = get(URL_CERTIFICATE_STATUS % request.id)
-    if status == "200"
+    if status == 200
       request_status = CertificateStatusResponse.new(data)
       return request_status
     elsif raise "Server unexpted behavior"
