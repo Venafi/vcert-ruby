@@ -86,7 +86,7 @@ class Vcert::CloudConnection
     end
 
     d = {existingManagedCertificateId: manage_id, zoneId: zone}
-    if request.csr != nil
+    if request.csr?
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
     else
