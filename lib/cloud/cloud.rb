@@ -62,8 +62,7 @@ class Vcert::CloudConnection
       raise("request id or certificate thumbprint must be specified for renewing certificate")
     end
     if request.thumbprint != nil
-      r = search_by_thumbprint(request.thumbprint)
-      manage_id = r.manage_id
+      manage_id = search_by_thumbprint(request.thumbprint)
     end
     if request.id != nil
       prev_request = get_cert_status(request)
@@ -133,6 +132,7 @@ class Vcert::CloudConnection
   URL_CERTIFICATE_REQUESTS = "certificaterequests"
   URL_CERTIFICATE_STATUS = URL_CERTIFICATE_REQUESTS + "/%s"
   URL_CERTIFICATE_RETRIEVE = URL_CERTIFICATE_REQUESTS + "/%s/certificate"
+  URL_CERTIFICATE_SEARCH = "certificatesearch"
   URL_MANAGED_CERTIFICATES = "managedcertificates"
   URL_MANAGED_CERTIFICATE_BY_ID = URL_MANAGED_CERTIFICATES + "/%s"
 
@@ -182,7 +182,12 @@ class Vcert::CloudConnection
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
-
+    case response.code.to_i
+    when 200, 201, 202, 409
+      LOG.info(("HTTP status OK"))
+    else
+      raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
+    end
     data = JSON.parse(response.body)
     return response.code.to_i, data
   end
@@ -243,8 +248,14 @@ class Vcert::CloudConnection
   end
 
   def search_by_thumbprint(thumbprint)
-    thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
+    # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
+    status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
+        {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
+    if status != 200
+      raise "Server unexpted behavior"
+    end
+    return data['certificates'][0]
   end
 
   def get_cert_status(request)
