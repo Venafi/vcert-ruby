@@ -21,7 +21,7 @@ class Vcert::CloudConnection
 
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
-    _,data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    _, data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
     LOG.info("Cert response:")
     LOG.info(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
@@ -32,13 +32,14 @@ class Vcert::CloudConnection
     LOG.info(("Getting certificate status for id %s" % request.id))
     status, data = get(URL_CERTIFICATE_STATUS % request.id)
     if [200, 409].include? status
-      if data['status'] == CERT_STATUS_PENDING or data['status'] == CERT_STATUS_REQUESTED
+      case data['status']
+      when CERT_STATUS_PENDING, CERT_STATUS_REQUESTED
         LOG.info(("Certificate status is %s." % data['status']))
         return nil
-      elsif data['status'] == CERT_STATUS_FAILED
+      when CERT_STATUS_FAILED
         LOG.info(("Status is %s. Returning data for debug" % data['status']))
         raise "Certificate issue FAILED"
-      elsif data['status'] == CERT_STATUS_ISSUED
+      when CERT_STATUS_ISSUED
         status, full_chain = get(URL_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == 200
           cert = parse_full_chain full_chain
@@ -49,6 +50,8 @@ class Vcert::CloudConnection
         else
           raise "Unexpected server behavior"
         end
+      else
+        raise "Unexpected server behavior"
       end
     end
   end
@@ -91,7 +94,7 @@ class Vcert::CloudConnection
       d.merge!(reuseCSR: true)
     end
 
-    status, data = post(URL_CERTIFICATE_REQUESTS, data=d)
+    status, data = post(URL_CERTIFICATE_REQUESTS, data = d)
     if status == 201
       return data['certificateRequests'][0]['id']
     else
@@ -154,13 +157,14 @@ class Vcert::CloudConnection
     else
       raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
     end
-    if response.header['content-type'] == "application/json"
+    case response.header['content-type']
+    when "application/json"
       begin
         data = JSON.parse(response.body)
       rescue JSON::ParserError
         raise "JSON parse error. Cant parse body response"
       end
-    elsif response.header['content-type'] == "text/plain"
+    when "text/plain"
       data = response.body
     else
       raise "Can't process content-type #{response.header['content-type']}"
