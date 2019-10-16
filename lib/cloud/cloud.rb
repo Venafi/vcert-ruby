@@ -243,8 +243,8 @@ class Vcert::CloudConnection
   end
 
   def search_by_thumbprint(thumbprint)
+    thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-
   end
 
   def get_cert_status(request)
@@ -252,7 +252,8 @@ class Vcert::CloudConnection
     if status == 200
       request_status = CertificateStatusResponse.new(data)
       return request_status
-    elsif raise "Server unexpted behavior"
+    else
+      raise "Server unexpted behavior"
     end
   end
 
