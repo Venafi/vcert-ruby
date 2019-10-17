@@ -235,7 +235,8 @@ class Vcert::CloudConnection
 
   def parse_policy_responce_to_object(d)
     key_types = []
-    d['keyTypes'].each { |kt| key_types.push(kt['keyType']) }
+    # TODO: need to change keytpyes to Vcert::KeyType objects
+    d['keyTypes'].each { |kt| key_types.push(['keyType']) }
     policy = Vcert::Policy.new(policy_id: d['id'],
                                name: d['name'],
                                system_generated: d['systemGenerated'],
@@ -256,8 +257,9 @@ class Vcert::CloudConnection
     thumbprint = thumbprint.upcase
     status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
+    # TODO: check that data have valid certificate in it
     if status != 200
-      raise "Server unexpted behavior"
+      raise "Unexpected status code on Venafi Cloud certificate search. Status: #{status}. Message:\n #{data.body.to_s}"
     end
     return data['certificates'][0]
   end

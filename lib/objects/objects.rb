@@ -23,8 +23,6 @@ module Vcert
       @locality = locality
       @san_dns = san_dns
       @friendly_name = friendly_name
-      @id = nil
-      @thumbprint = nil
       @csr = csr
     end
 
