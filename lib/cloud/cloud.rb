@@ -102,7 +102,7 @@ class Vcert::CloudConnection
 
   end
 
-  def read_zone_conf(tag)
+  def zone_configuration(tag)
     if tag.to_s.strip.empty?
       raise "Zone should not be empty"
     end
