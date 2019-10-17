@@ -162,6 +162,26 @@ class Vcert::TPPConnection
     z
   end
 
+  def renew(request)
+    if request.id == nil && request.thumbprint == nil
+      raise("request id or certificate thumbprint must be specified for renewing certificate")
+    end
+
+    if request.thumbprint != nil
+      manage_id = search_by_thumbprint(request.thumbprint)
+    end
+    if request.id != nil
+      prev_request = get_cert_status(request)
+      manage_id = prev_request.manage_id
+      zone = prev_request.zoneId
+    end
+    if manage_id == nil
+      raise "Can`t find manage_id"
+    end
+
+
+  end
+
   private
 
   URL_AUTHORIZE = "authorize/"
