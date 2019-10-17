@@ -1,10 +1,12 @@
 require 'openssl'
+require "logger"
+LOG = Logger.new(STDOUT)
 
 
 module Vcert
   class Request
     attr_accessor :id
-    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type
+    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
 
     def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
@@ -72,10 +74,15 @@ module Vcert
     end
 
     def csr
+      # TODO: find a way to pass CSR generation if renew is requested
       if @csr == nil
         generate_csr
       end
       @csr
+    end
+
+    def csr?
+      @csr != nil
     end
 
     def private_key
@@ -120,7 +127,7 @@ module Vcert
 
     def generate_private_key
       if @key_type == nil
-        @key_type = KeyType.new(type: "rsa", option: 2048)
+        @key_type = KeyType.new("rsa", 2048)
       end
       if @key_type.type == "rsa"
         @private_key = OpenSSL::PKey::RSA.new @key_type.option
