@@ -39,6 +39,10 @@ module Vcert
       @conn.policy(zone)
     end
 
+    def renew(*args)
+      @conn.renew(*args)
+    end
+
     # @param [Request] req
     # @param [String] zone
     # @param [Integer] timeout
