@@ -49,7 +49,7 @@ class VcertTest < Minitest::Test
     LOG.info("Requesting cert with CN #{cn}")
     kt = Vcert::KeyType.new("rsa", 4096)
     request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt)
-    zone_config = conn.read_zone_conf(CLOUDZONE)
+    zone_config = conn.zone_configuration(CLOUDZONE)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
     LOG.info(("cert is:\n" + cert.cert))
@@ -90,7 +90,7 @@ class VcertTest < Minitest::Test
   end
 
 
-  def test_read_zone_configuration_tpp
+  def test_zone_configuration_tpp
     conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
 
     zone = conn.zone_configuration TPPZONE
