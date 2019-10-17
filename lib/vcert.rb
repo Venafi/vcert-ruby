@@ -33,6 +33,10 @@ module Vcert
       @conn.read_zone_conf(*args)
     end
 
+    def policy(*args)
+      @conn.policy(*args)
+    end
+
     def request_and_retrieve(req, zone, timeout)
       request zone, req
       t = Time.new() + timeout
