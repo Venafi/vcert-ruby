@@ -101,9 +101,25 @@ module Vcert
 
     # @param [ZoneConfiguration] zone_config
     def update_from_zone_config(zone_config)
-      if zone_config.country.locked
-
+      if zone_config.country.locked || (!@country && !!zone_config.country.value)
+        @country = zone_config.country.value
       end
+      if zone_config.locality.locked || (!@locality && !!zone_config.locality.value)
+        @locality = zone_config.locality.value
+      end
+      if zone_config.province.locked || (!@province && !!zone_config.province.value)
+        @province = zone_config.province.value
+      end
+      if zone_config.organization.locked || (!@organization && !!zone_config.organization.value)
+        @organization = zone_config.organization.value
+      end
+      if zone_config.organizational_unit.locked || (!@organizational_unit && !!zone_config.organizational_unit.value)
+        @organizational_unit = zone_config.organizational_unit.value
+      end
+      if zone_config.key_type.locked || (@key_type == nil && zone_config.key_type.value != nil)
+        @key_type = zone_config.key_type.value
+      end
+      #todo: think. may be we should regenerate csr and private key.
     end
 
     private
@@ -187,6 +203,7 @@ module Vcert
       unless is_key_type_is_valid?(request.key_type, @key_types)
         raise "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
       end
+      # todo: (!important!) parse csr if it alredy generated (!important!)
     end
 
     private
@@ -275,6 +292,9 @@ module Vcert
       end
     end
     def ==(other)
+      unless other.instance_of? KeyType
+        return false
+      end
       self.type == other.type && self.option == other.option
     end
   end

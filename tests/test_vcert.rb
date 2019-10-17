@@ -144,6 +144,27 @@ class VcertLocalTest < Minitest::Test
     assert(!p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), []))
     assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "sec256k1"), Vcert::KeyType.new("rsa", 2048)]))
     assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("rsa", 2048)]))
+  end
+
+
+  def test_update_from_zone_config
+    r = Vcert::Request.new common_name: "test.example.com", country: "US", locality: "New York"
+    f = Vcert::CertField
+    z = Vcert::ZoneConfiguration.new country: f.new("UK"),
+                                     province: f.new("Utah"),
+                                     locality: f.new("Salt Lake", locked: true),
+                                     organization: f.new("Venafi", locked: true),
+                                     organizational_unit: f.new(["Integsation", "Devops"]),
+                                     key_type: f.new(Vcert::KeyType.new("ec", "sec256k1"))
+    r.update_from_zone_config(z)
+    assert_equal(r.country, "US")
+    assert_equal(r.province, "Utah")
+    assert_equal(r.locality, "Salt Lake")
+    assert_equal(r.organization, "Venafi")
+    assert_equal(r.organizational_unit, ["Integsation", "Devops"])
+    assert_equal(r.key_type.type, "ecdsa")
+    assert_equal(r.key_type.option, "sec256k1")
 
   end
+
 end
