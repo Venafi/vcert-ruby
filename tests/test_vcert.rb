@@ -101,7 +101,9 @@ class VcertTest < Minitest::Test
 
     policy = conn.policy TPPZONE
   end
+end
 
+class VcertLocalTest < Minitest::Test
   def test_generate_csr
     req = Vcert::Request.new
     assert_raises do
@@ -120,5 +122,28 @@ class VcertTest < Minitest::Test
     req = Vcert::Request.new common_name: random_domain, key_type: "ec"
     csr = OpenSSL::X509::Request.new req.csr
     assert_instance_of(OpenSSL::PKey::EC, csr.public_key)
+  end
+
+  def test_match_regexp
+    p = Vcert::Policy.new policy_id:nil, name:nil, system_generated:nil, creation_date:nil, subject_cn_regexes:nil, subject_o_regexes:nil,
+        subject_ou_regexes:nil, subject_st_regexes:nil, subject_l_regexes:nil, subject_c_regexes:nil, san_regexes:nil,
+        key_types:nil
+    assert(p.send(:match_regexps?, "test", ["test", "ololo"]))
+    assert(!p.send(:match_regexps?, "test", ["ololo"]))
+    assert(!p.send(:match_regexps?, "test", []))
+    assert(p.send(:match_regexps?, "test", [".*"]))
+    assert(!p.send(:match_regexps?, "testtest", ["^test$"]))
+    assert(!p.send(:match_regexps?, "", ["test"]))
+    assert(p.send(:match_regexps?, "", ["test", ".*"]))
+  end
+
+  def test_key_pairs
+    p = Vcert::Policy.new policy_id:nil, name:nil, system_generated:nil, creation_date:nil, subject_cn_regexes:nil, subject_o_regexes:nil,
+                          subject_ou_regexes:nil, subject_st_regexes:nil, subject_l_regexes:nil, subject_c_regexes:nil, san_regexes:nil,
+                          key_types:nil
+    assert(!p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), []))
+    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "sec256k1"), Vcert::KeyType.new("rsa", 2048)]))
+    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("rsa", 2048)]))
+
   end
 end

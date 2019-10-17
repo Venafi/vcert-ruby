@@ -13,30 +13,39 @@ module Vcert
       end
     end
 
-    def request(*args)
-      @conn.request(*args)
+
+    # @param [String] zone
+    # @param [Request] request
+    def request(zone, request)
+      @conn.request(zone, request)
     end
 
-    def retrieve(*args)
-      @conn.retrieve(*args)
+    # @param [Request] request
+    def retrieve(request)
+      @conn.retrieve(request)
     end
 
     def revoke(*args)
       @conn.revoke(*args)
     end
 
+    # @param [String] zone
+    def zone_configuration(zone)
+      @conn.zone_configuration(zone)
+    end
+
+    # @param [String] zone
+    def policy(zone)
+      @conn.policy(zone)
+    end
+
     def renew(*args)
       @conn.renew(*args)
     end
 
-    def read_zone_conf(*args)
-      @conn.read_zone_conf(*args)
-    end
-
-    def policy(*args)
-      @conn.policy(*args)
-    end
-
+    # @param [Request] req
+    # @param [String] zone
+    # @param [Integer] timeout
     def request_and_retrieve(req, zone, timeout)
       request zone, req
       t = Time.new() + timeout

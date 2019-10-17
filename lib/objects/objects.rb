@@ -5,7 +5,8 @@ LOG = Logger.new(STDOUT)
 
 module Vcert
   class Request
-    attr_accessor :id, :thumbprint
+    attr_accessor :id
+    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
 
     def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
@@ -23,6 +24,7 @@ module Vcert
       @locality = locality
       @san_dns = san_dns
       @friendly_name = friendly_name
+      @id = nil
       @csr = csr
     end
 
@@ -97,8 +99,11 @@ module Vcert
       @common_name
     end
 
+    # @param [ZoneConfiguration] zone_config
     def update_from_zone_config(zone_config)
+      if zone_config.country.locked
 
+      end
     end
 
     private
@@ -130,9 +135,10 @@ module Vcert
   class Policy
     attr_reader :policy_id, :name, :system_generated, :creation_date
 
-    def initialize(policy_id:, name:, system_generated: nil, creation_date: nil, subject_cn_regexes:, subject_o_regexes:,
+    def initialize(policy_id:, name:, system_generated:, creation_date:, subject_cn_regexes:, subject_o_regexes:,
                    subject_ou_regexes:, subject_st_regexes:, subject_l_regexes:, subject_c_regexes:, san_regexes:,
                    key_types:)
+
       @policy_id = policy_id
       @name = name
       @system_generated = system_generated
@@ -147,21 +153,89 @@ module Vcert
       @key_types = key_types
     end
 
-    def check_request(request)
+    # @param [Request] request
+    def simple_check_request(request)
+      unless component_is_valid?(request.common_name, @subject_cn_regexes)
+        raise "Common name #{request.common_name} doesnt match #{@subject_cn_regexes}"
+      end
+      unless component_is_valid?(request.san_dns, @san_regexes, optional: true)
+        raise "SANs #{request.san_dns} doesnt match #{ @san_regexes }"
+      end
 
+    end
+
+    # @param [Request] request
+    def check_request(request)
+      simple_check_request(request)
+      # subject
+      unless component_is_valid?(request.country, @subject_c_regexes)
+        raise "Country #{request.country} doesnt match #{@subject_c_regexes}"
+      end
+      unless component_is_valid?(request.province, @subject_st_regexes)
+        raise "Province #{request.province} doesnt match #{@subject_st_regexes}"
+      end
+      unless component_is_valid?(request.locality, @subject_l_regexes)
+        raise "Locality #{request.locality} doesnt match #{@subject_l_regexes}"
+      end
+      unless component_is_valid?(request.organization, @subject_o_regexes)
+        raise "Organization #{request.organization} doesnt match #{@subject_o_regexes}"
+      end
+      unless component_is_valid?(request.organizational_unit, @subject_ou_regexes)
+        raise "Organizational unit #{request.organizational_unit} doesnt match #{@subject_ou_regexes}"
+      end
+      #todo: add uri, upn, ip, email
+      unless is_key_type_is_valid?(request.key_type, @key_types)
+        raise "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
+      end
     end
 
     private
 
-    def check_string_match_regexps(s, regexps)
-      return true
+    def is_key_type_is_valid?(key_type, allowed_key_types)
+      for i in 0 ... allowed_key_types.length
+        if allowed_key_types[i] == key_type
+          return true
+        end
+      end
+      false
     end
 
+    def component_is_valid?(component, regexps, optional:false)
+      unless component.instance_of? Array
+        component = [component]
+      end
+      if component.length == 0 && optional
+        return true
+      end
+      if component.length == 0
+        component = [""]
+      end
+      for i in 0 ... component.length
+        unless match_regexps?(component[i], regexps)
+          return false
+        end
+      end
+      true
+    end
+
+    def match_regexps?(s, regexps)
+      for i in 0 ... regexps.length
+        if Regexp.new(regexps[i]).match(s)
+          return true
+        end
+      end
+      false
+    end
   end
 
   class ZoneConfiguration
     attr_reader :country, :province, :locality, :organization, :organizational_unit, :key_type
 
+    # @param [CertField] country
+    # @param [CertField] province
+    # @param [CertField] locality
+    # @param [CertField] organization
+    # @param [CertField] organizational_unit
     def initialize(country:, province:, locality:, organization:, organizational_unit:, key_type:)
       @country = country
       @province = province
@@ -183,6 +257,7 @@ module Vcert
 
   class KeyType
     attr_reader :type, :option
+
     def initialize(type, option)
       @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
       if @type == nil
@@ -198,6 +273,9 @@ module Vcert
         #todo: curve validations
         @option = option
       end
+    end
+    def ==(other)
+      self.type == other.type && self.option == other.option
     end
   end
 end
