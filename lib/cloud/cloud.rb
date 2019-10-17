@@ -103,6 +103,10 @@ class Vcert::CloudConnection
   end
 
   def read_zone_conf(tag)
+    if tag.to_s.strip.empty?
+      raise "Zone should not be empty"
+    end
+    LOG.info("Getting configuration for zone #{tag}")
     _, data = get(URL_ZONE_BY_TAG % tag)
     template_id = data['certificateIssuingTemplateId']
     _, data = get(URL_TEMPLATE_BY_ID % template_id)
