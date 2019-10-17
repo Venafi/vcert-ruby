@@ -8,7 +8,7 @@ export TPPPASSWORD='xxxxxx'
 export TPPURL="https://ha-tpp.example.com/vedsdk"
 export TPPZONE="devops\\\\vcert"
 export CLOUDAPIKEY='xxxxxx-xxxx-xxxx-xxxxx-xxxxxxxxx'
-CLOUDURL='https://api.dev01.qa.venafi.io/v1'
+export CLOUDURL='https://api.dev01.qa.venafi.io/v1'
 export CLOUDZONE=Default
 ```
 
