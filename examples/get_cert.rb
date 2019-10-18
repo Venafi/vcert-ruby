@@ -10,7 +10,7 @@ TPP_PASSWORD = ENV['TPPPASSWORD']
 
 conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 
-request = Vcert::Request.new common_name: "test.example.com", country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
+request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
 certificate = conn.request_and_retrieve(request, CLOUDZONE, 600)
 

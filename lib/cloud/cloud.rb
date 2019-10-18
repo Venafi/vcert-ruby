@@ -117,7 +117,7 @@ class Vcert::CloudConnection
         locality: Vcert::CertField.new(""),
         organization: Vcert::CertField.new(""),
         organizational_unit: Vcert::CertField.new(""),
-        key_type: kt,
+        key_type: Vcert::CertField.new(kt, locked: true),
     )
     return z
   end
