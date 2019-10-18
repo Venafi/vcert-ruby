@@ -4,6 +4,7 @@ LOG = Logger.new(STDOUT)
 
 
 module Vcert
+
   class Request
     attr_accessor :id
     attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
@@ -127,7 +128,7 @@ module Vcert
 
     def generate_private_key
       if @key_type == nil
-        @key_type = KeyType.new("rsa", 2048)
+        @key_type = DEFAULT_KEY_TYPE
       end
       if @key_type.type == "rsa"
         @private_key = OpenSSL::PKey::RSA.new @key_type.option
@@ -209,6 +210,9 @@ module Vcert
     private
 
     def is_key_type_is_valid?(key_type, allowed_key_types)
+      if key_type == nil
+        key_type = DEFAULT_KEY_TYPE
+      end
       for i in 0 ... allowed_key_types.length
         if allowed_key_types[i] == key_type
           return true
@@ -218,6 +222,9 @@ module Vcert
     end
 
     def component_is_valid?(component, regexps, optional:false)
+      if component == nil
+        component = []
+      end
       unless component.instance_of? Array
         component = [component]
       end
@@ -253,6 +260,7 @@ module Vcert
     # @param [CertField] locality
     # @param [CertField] organization
     # @param [CertField] organizational_unit
+    # @param [CertField] key_type
     def initialize(country:, province:, locality:, organization:, organizational_unit:, key_type:)
       @country = country
       @province = province
@@ -298,5 +306,6 @@ module Vcert
       self.type == other.type && self.option == other.option
     end
   end
+  DEFAULT_KEY_TYPE = KeyType.new("rsa", 2048)
 end
 

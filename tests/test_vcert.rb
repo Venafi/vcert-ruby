@@ -28,7 +28,7 @@ AilzNOkXEeBwCT79bdpc3xh/hrjf9PeItLMpS7lVUUYQH18JK203BMGOE76EaELA
 fk2X1wGedpdby5XRW0a7qozvwdBBTfI6/yMTP+iF5ghzvpCGtX2tYkyQ0I2GT/hV
 YuWiOhL8NVOxPWFbiKWghQ2qH3hE0arsDA==
 -----END CERTIFICATE REQUEST-----"
-TEST_DOMAIN = ENV['TEST_DOMAIN']
+TEST_DOMAIN = "example.com"
 
 def random_string(length)
   Array.new(length) { Array('a'..'z').sample }.join
@@ -116,10 +116,10 @@ class VcertLocalTest < Minitest::Test
     req = Vcert::Request.new common_name: random_domain, organization: "Venafi", organizational_unit: "Devops", country: "US", locality: "Salt Lake", province: "Utah"
     temp = req.csr
     assert_equal(temp, req.csr)
-    req = Vcert::Request.new common_name: random_domain, key_type: "rsa", key_length: 4096
+    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("rsa", 4096)
     csr = OpenSSL::X509::Request.new req.csr
     assert_equal(csr.public_key.n.num_bytes * 8, 4096)
-    req = Vcert::Request.new common_name: random_domain, key_type: "ec"
+    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("ecdsa", "secp256k1")
     csr = OpenSSL::X509::Request.new req.csr
     assert_instance_of(OpenSSL::PKey::EC, csr.public_key)
   end
@@ -164,7 +164,35 @@ class VcertLocalTest < Minitest::Test
     assert_equal(r.organizational_unit, ["Integsation", "Devops"])
     assert_equal(r.key_type.type, "ecdsa")
     assert_equal(r.key_type.option, "sec256k1")
-
   end
 
+  def test_check_with_policies
+    r = Vcert::Request.new common_name: "test.example.com"
+    p = new_policy_test_wrapper
+    assert_nil(p.check_request(r))
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"])
+    assert_raises do
+      p.check_request(r)
+    end
+    r = Vcert::Request.new common_name: "test.venafi.com", key_type: Vcert::KeyType.new("ecdsa", "p225")
+    assert_raises do
+      p.check_request(r)
+    end
+    #todo: add more tests
+  end
+
+end
+
+def new_policy_test_wrapper(policy_id: nil, name: "", system_generated: false, creation_date: nil,
+                            subject_cn_regexes:[".*"], subject_o_regexes: [".*"], subject_ou_regexes:[".*"],
+                            subject_st_regexes:[".*"], subject_l_regexes:[".*"], subject_c_regexes:[".*"],
+                            san_regexes:[".*"], key_types: nil)
+  if key_types == nil
+    key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + ["sec256k1", "sec256r1", "p521"].map {|c| Vcert::KeyType.new("ecdsa", c) }
+  end
+  Vcert::Policy.new(policy_id: policy_id, name: name, system_generated: system_generated, creation_date: creation_date,
+                    subject_cn_regexes: subject_cn_regexes, subject_o_regexes: subject_o_regexes,
+                    subject_ou_regexes: subject_ou_regexes, subject_st_regexes: subject_st_regexes,
+                    subject_l_regexes: subject_l_regexes, subject_c_regexes: subject_c_regexes, san_regexes: san_regexes,
+                    key_types: key_types)
 end
