@@ -2,6 +2,7 @@ require 'openssl'
 require "logger"
 LOG = Logger.new(STDOUT)
 
+OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 
 module Vcert
 
@@ -14,6 +15,7 @@ module Vcert
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
+      #todo: parse private key and set public
       if key_type != nil && !key_type.instance_of?(KeyType)
         raise "key_type bad type. should be Vcert::KeyType. for example KeyType('rsa', 2048)"
       end
@@ -56,7 +58,7 @@ module Vcert
       csr = OpenSSL::X509::Request.new
       csr.version = 0
       csr.subject = subject
-      csr.public_key = @private_key.public_key
+      csr.public_key = @public_key
       if @san_dns != nil
         #TODO: add check that san_dns is an array
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
@@ -133,8 +135,11 @@ module Vcert
       end
       if @key_type.type == "rsa"
         @private_key = OpenSSL::PKey::RSA.new @key_type.option
+        @public_key = @private_key.public_key
       elsif @key_type.type == "ecdsa"
-        @private_key = OpenSSL::PKey::EC.new @key_type.option
+        @private_key, @public_key = OpenSSL::PKey::EC.new(@key_type.option), OpenSSL::PKey::EC.new(@key_type.option)
+        @private_key.generate_key
+        @public_key.public_key = @private_key.public_key
       end
     end
   end
