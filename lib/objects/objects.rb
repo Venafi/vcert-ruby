@@ -58,6 +58,7 @@ module Vcert
       csr.subject = subject
       csr.public_key = @private_key.public_key
       if @san_dns != nil
+        #TODO: add check that san_dns is an array
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [
             OpenSSL::X509::ExtensionFactory.new.create_extension('subjectAltName', san_list.join(','))

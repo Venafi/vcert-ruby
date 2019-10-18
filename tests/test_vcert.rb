@@ -48,8 +48,8 @@ class VcertTest < Minitest::Test
     conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     LOG.info("Requesting cert with CN #{cn}")
     kt = Vcert::KeyType.new("rsa", 4096)
-    request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt)
-    zone_config = conn.read_zone_conf(CLOUDZONE)
+    request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt, san_dns: ["ext-"+cn])
+    zone_config = conn.zone_configuration(CLOUDZONE)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
     LOG.info(("cert is:\n" + cert.cert))
@@ -58,6 +58,7 @@ class VcertTest < Minitest::Test
     certificate_object = OpenSSL::X509::Certificate.new(cert.cert)
     key_object = OpenSSL::PKey::RSA.new(cert.private_key)
     assert certificate_object.check_private_key(key_object)
+    LOG.info("Subject is #{certificate_object.subject}")
 
     # Renew test
     renew_request = Vcert::Request.new
@@ -90,7 +91,7 @@ class VcertTest < Minitest::Test
   end
 
 
-  def test_read_zone_configuration_tpp
+  def test_zone_configuration_tpp
     conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
 
     zone = conn.zone_configuration TPPZONE
