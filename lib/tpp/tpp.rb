@@ -178,7 +178,10 @@ class Vcert::TPPConnection
     if manage_id == nil
       raise "Can`t find manage_id"
     end
-
+    status, data = self._post(URLS.CERTIFICATE_RENEW, data={"CertificateDN": request.id})
+    if not data['Success']
+        raise "Certificate renew error"
+    end
 
   end
 
@@ -188,6 +191,7 @@ class Vcert::TPPConnection
   URL_CERTIFICATE_REQUESTS = "certificates/request"
   URL_ZONE_CONFIG = "certificates/checkpolicy"
   URL_CERTIFICATE_RETRIEVE = "certificates/retrieve"
+  URL_CERTIFICATE_SEARCH= "certificates/"
   TOKEN_HEADER_NAME = "x-venafi-api-key"
   ALL_ALLOWED_REGEX = ".*"
   def auth
@@ -268,7 +272,7 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new pems[0], pems[1..-1], nil # todo: parser
+    Vcert::Certificate.new cert: pems[0], chain: pems[1..-1], private_key: nil # todo: parser
   end
 
   def parse_pem_list(multiline)
@@ -289,6 +293,18 @@ class Vcert::TPPConnection
       end
     end
     pems
+  end
+
+  def search_by_thumbprint(thumbprint)
+    # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
+    thumbprint = thumbprint.upcase
+    status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
+        {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
+    # TODO: check that data have valid certificate in it
+    if status != 200
+      raise "Unexpected status code on Venafi Cloud certificate search. Status: #{status}. Message:\n #{data.body.to_s}"
+    end
+    return data['certificates'][0]
   end
 end
 
