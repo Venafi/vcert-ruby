@@ -123,7 +123,6 @@ module Vcert
       if zone_config.key_type.locked || (@key_type == nil && zone_config.key_type.value != nil)
         @key_type = zone_config.key_type.value
       end
-      #todo: think. may be we should regenerate csr and private key.
     end
 
     private
@@ -295,15 +294,15 @@ module Vcert
         raise "bad key type"
       end
       if @type == "rsa"
-        if [512, 1024, 2048, 3072, 4096, 8192].include?(option)
-          @option = option
-        else
+        unless  [512, 1024, 2048, 3072, 4096, 8192].include?(option)
           raise "bad option for rsa key: #{option}. should be one from list 512, 1024, 2048, 3072, 4096, 8192"
         end
       else
-        #todo: curve validations
-        @option = option
+        unless SUPPORTED_CURVES.include?(option)
+          raise "bad option for ec key: #{option}. should be one from list #{ SUPPORTED_CURVES}"
+        end
       end
+      @option = option
     end
     def ==(other)
       unless other.instance_of? KeyType

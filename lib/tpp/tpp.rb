@@ -261,7 +261,7 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil # todo: parser
+    Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil
   end
 
   def parse_pem_list(multiline)
