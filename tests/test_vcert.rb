@@ -189,7 +189,7 @@ def new_policy_test_wrapper(policy_id: nil, name: "", system_generated: false, c
                             subject_st_regexes:[".*"], subject_l_regexes:[".*"], subject_c_regexes:[".*"],
                             san_regexes:[".*"], key_types: nil)
   if key_types == nil
-    key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + ["sec256k1", "sec256r1", "p521"].map {|c| Vcert::KeyType.new("ecdsa", c) }
+    key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map {|c| Vcert::KeyType.new("ecdsa", c) }
   end
   Vcert::Policy.new(policy_id: policy_id, name: name, system_generated: system_generated, creation_date: creation_date,
                     subject_cn_regexes: subject_cn_regexes, subject_o_regexes: subject_o_regexes,

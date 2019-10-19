@@ -5,7 +5,7 @@ LOG = Logger.new(STDOUT)
 OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 
 module Vcert
-
+  SUPPORTED_CURVES = ["secp224r1", "prime256v1", "secp521r1"]
   class Request
     attr_accessor :id
     attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint

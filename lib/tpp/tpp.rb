@@ -126,7 +126,7 @@ class Vcert::TPPConnection
       upnSanRegExs = []
     end
     unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
-      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + ["prime256v1"].map{|c| Vcert::KeyType.new("ec", c)} #todo: add all curves
+      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
     else
       if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
         if policy["KeyPair"]["KeySize"]["Locked"]
@@ -135,7 +135,12 @@ class Vcert::TPPConnection
           key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) }
         end
       elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
-        # todo: Write
+        if policy["KeyPair"]["EllipticCurve"]["Locked"]
+          curve = {"p224" => "secp224r1", "p256" => "prime256v1", "p521" => "secp521r1"}[policy["KeyPair"]["EllipticCurve"]["Value"].downcase]
+          key_types = [Vcert::KeyType.new("ecdsa", curve)]
+        else
+          key_types = Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
+        end
       end
     end
 
