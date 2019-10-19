@@ -139,10 +139,11 @@ class Vcert::TPPConnection
       end
     end
 
-    p = Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, subject_cn_regexes: subjectCNRegex,
-        subject_o_regexes: subjectORegexes, subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
-                      subject_l_regexes: subjectLRegexes, subject_c_regexes:subjectCRegexes, san_regexes:dnsSanRegExs,
-        key_types: key_types)
+    Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, system_generated: false, creation_date: nil,
+                      subject_cn_regexes: subjectCNRegex, subject_o_regexes: subjectORegexes,
+                      subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
+                      subject_l_regexes: subjectLRegexes, subject_c_regexes: subjectCRegexes, san_regexes: dnsSanRegExs,
+                      key_types: key_types)
   end
 
 
@@ -157,9 +158,9 @@ class Vcert::TPPConnection
     city = Vcert::CertField.new s["City"]["Value"], locked: s["City"]["Locked"]
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
-    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], key_length: response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    z = Vcert::ZoneConfiguration.new country, state, city, organization, organizational_unit, key_type
-    z
+    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
+    Vcert::ZoneConfiguration.new country:country, province: state, locality: city, organization: organization,
+                                     organizational_unit: organizational_unit, key_type:key_type
   end
 
   private
@@ -248,7 +249,7 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new pems[0], pems[1..-1], nil # todo: parser
+    Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil # todo: parser
   end
 
   def parse_pem_list(multiline)
