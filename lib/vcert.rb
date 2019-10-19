@@ -5,11 +5,11 @@ LOG = Logger.new(STDOUT)
 
 module Vcert
   class Connection
-    def initialize(url: nil, user: nil, password: nil, cloud_token: nil)
+    def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil)
       if cloud_token != nil then
         @conn = CloudConnection.new url, cloud_token
       elsif user != nil && password != nil && url != nil then
-        @conn = TPPConnection.new url, user, password
+        @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
       else
         raise "Invalid credentials list" # todo: add typed exceptions
       end

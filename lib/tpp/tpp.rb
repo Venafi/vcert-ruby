@@ -3,11 +3,12 @@ require 'date'
 require 'base64'
 
 class Vcert::TPPConnection
-  def initialize(url, user, password)
+  def initialize(url, user, password, trust_bundle:nil)
     @url = normalize_url url
     @user = user
     @password = password
     @token = nil
+    @trust_bundle = trust_bundle
   end
 
   def request(zone_tag, request)
@@ -180,7 +181,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + URL_AUTHORIZE
     data = {:Username => @user, :Password => @password}
     encoded_data = JSON.generate(data)
@@ -198,7 +201,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
@@ -213,7 +218,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + url
     response = request.get(url, {TOKEN_HEADER_NAME => @token[0]})
     data = JSON.parse(response.body)

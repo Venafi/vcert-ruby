@@ -10,6 +10,7 @@ TPPURL = ENV['TPPURL']
 TPPUSER = ENV['TPPUSER']
 TPPPASSWORD = ENV['TPPPASSWORD']
 TPPZONE = ENV["TPPZONE"]
+TRUST_BUNDLE = ENV["TRUST_BUNDLE"]
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -83,7 +84,7 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
     req = Vcert::Request.new common_name: 'test432432423.example.com'
     cert = conn.request_and_retrieve req, TPPZONE, 600
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
@@ -92,16 +93,20 @@ class VcertTest < Minitest::Test
 
 
   def test_zone_configuration_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
 
     zone = conn.zone_configuration TPPZONE
   end
 
   def test_read_policy_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
 
     policy = conn.policy TPPZONE
   end
+end
+
+def tpp_connection
+  Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
 end
 
 class VcertLocalTest < Minitest::Test
