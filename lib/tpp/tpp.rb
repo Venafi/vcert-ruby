@@ -1,6 +1,7 @@
 require 'json'
 require 'date'
 require 'base64'
+require 'utils/utils'
 
 class Vcert::TPPConnection
   def initialize(url, user, password, trust_bundle:nil)
@@ -262,26 +263,6 @@ class Vcert::TPPConnection
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
     Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil
-  end
-
-  def parse_pem_list(multiline)
-    pems = []
-    buf = ""
-    current_string_is_pem = false
-    multiline.each_line do |line|
-      if line.match(/-----BEGIN [A-Z\ ]+-----/)
-        current_string_is_pem = true
-      end
-      if current_string_is_pem
-        buf = buf + line
-      end
-      if line.match(/-----END [A-Z\ ]+-----/)
-        current_string_is_pem = false
-        pems.push(buf)
-        buf = ""
-      end
-    end
-    pems
   end
 end
 
