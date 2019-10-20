@@ -125,7 +125,7 @@ class VcertLocalTest < Minitest::Test
     req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("rsa", 4096)
     csr = OpenSSL::X509::Request.new req.csr
     assert_equal(csr.public_key.n.num_bytes * 8, 4096)
-    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("ecdsa", "secp256k1")
+    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("ecdsa", "prime256v1")
     csr = OpenSSL::X509::Request.new req.csr
     assert_instance_of(OpenSSL::PKey::EC, csr.public_key)
   end
@@ -148,7 +148,7 @@ class VcertLocalTest < Minitest::Test
                           subject_ou_regexes:nil, subject_st_regexes:nil, subject_l_regexes:nil, subject_c_regexes:nil, san_regexes:nil,
                           key_types:nil
     assert(!p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), []))
-    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "sec256k1"), Vcert::KeyType.new("rsa", 2048)]))
+    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "prime256v1"), Vcert::KeyType.new("rsa", 2048)]))
     assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("rsa", 2048)]))
   end
 
@@ -161,7 +161,7 @@ class VcertLocalTest < Minitest::Test
                                      locality: f.new("Salt Lake", locked: true),
                                      organization: f.new("Venafi", locked: true),
                                      organizational_unit: f.new(["Integsation", "Devops"]),
-                                     key_type: f.new(Vcert::KeyType.new("ec", "sec256k1"))
+                                     key_type: f.new(Vcert::KeyType.new("ec", "prime256v1"))
     r.update_from_zone_config(z)
     assert_equal(r.country, "US")
     assert_equal(r.province, "Utah")
@@ -169,7 +169,7 @@ class VcertLocalTest < Minitest::Test
     assert_equal(r.organization, "Venafi")
     assert_equal(r.organizational_unit, ["Integsation", "Devops"])
     assert_equal(r.key_type.type, "ecdsa")
-    assert_equal(r.key_type.option, "sec256k1")
+    assert_equal(r.key_type.option, "prime256v1")
   end
 
   def test_check_with_policies
@@ -180,7 +180,8 @@ class VcertLocalTest < Minitest::Test
     assert_raises do
       p.check_request(r)
     end
-    r = Vcert::Request.new common_name: "test.venafi.com", key_type: Vcert::KeyType.new("ecdsa", "p225")
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"], key_types: [Vcert::KeyType.new("rsa", 2048), Vcert::KeyType.new("ecdsa", "secp521r1")])
+    r = Vcert::Request.new common_name: "test.venafi.com", key_type: Vcert::KeyType.new("ecdsa", "prime256v1")
     assert_raises do
       p.check_request(r)
     end
