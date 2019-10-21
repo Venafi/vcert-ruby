@@ -25,7 +25,8 @@ puts request.private_key
 
 renew_request = Vcert::Request.new
 renew_request.id = request.id
-renew_cert_id = conn.renew(renew_request)
+renew_cert_id, renew_private_key = conn.renew(renew_request)
 renew_request.id = renew_cert_id
 renew_cert = conn.retrieve(renew_request)
 puts "Renewed cert is:\n#{renew_cert.cert}"
+puts "Renew pkey is:\n#{renew_private_key}"

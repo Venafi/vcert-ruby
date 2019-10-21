@@ -312,16 +312,6 @@ module Vcert
     end
   end
 
-  class CreateRequestFromCSR
-    def initialize(csr)
-      @csr = csr
-      @request = Vcert::Request.new
-    end
-
-    def parse_csr_fields
-
-    end
-  end
   DEFAULT_KEY_TYPE = KeyType.new("rsa", 2048)
 end
 

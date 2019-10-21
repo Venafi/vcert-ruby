@@ -1,7 +1,5 @@
 require 'net/https'
 require 'time'
-require "logger"
-LOG = Logger.new(STDOUT)
 
 module Vcert
   class Connection

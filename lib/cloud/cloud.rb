@@ -61,7 +61,7 @@ class Vcert::CloudConnection
     end
   end
 
-  def renew(request, key_reuse)
+  def renew(request, key_reuse: true)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
@@ -90,21 +90,33 @@ class Vcert::CloudConnection
       zone = prev_request.zoneId
     end
 
-    if key_reuse
-      renew_request = create_request_from_csr(prev_request.csr)
-    end
-
     d = {existingManagedCertificateId: manage_id, zoneId: zone}
     if request.csr?
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
+    elsif key_reuse
+      parsed_csr = parse_csr_fields(prev_request.csr)
+      renew_request = Vcert::Request.new(
+          common_name: parsed_csr[:CN],
+          san_dns: [parsed_csr[:DNS]],
+          country: parsed_csr[:C],
+          province: parsed_csr[:ST],
+          locality: parsed_csr[:L],
+          organization: parsed_csr[:O],
+          organizational_unit: parsed_csr[:OU])
+      d.merge!(certificateSigningRequest: renew_request.csr)
     else
       d.merge!(reuseCSR: true)
     end
 
     status, data = post(URL_CERTIFICATE_REQUESTS, data = d)
     if status == 201
-      return data['certificateRequests'][0]['id']
+      if key_reuse
+        return data['certificateRequests'][0]['id'], renew_request.private_key
+      else
+        return data['certificateRequests'][0]['id'], nil
+      end
+
     else
       raise "server unexpected status: #{status}\n message: #{data}"
     end
@@ -243,7 +255,7 @@ class Vcert::CloudConnection
   def search_by_thumbprint(thumbprint)
     # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-    status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
+    status, data = post(URL_CERTIFICATE_SEARCH, data = {expression: {operands: [
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
     # TODO: check that data have valid certificate in it
     if status != 200
