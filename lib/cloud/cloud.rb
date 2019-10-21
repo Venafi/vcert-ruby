@@ -2,13 +2,17 @@ require 'json'
 
 class CertificateStatusResponse
 
-  attr_reader :status, :subject, :zoneId, :manage_id
+  attr_reader :status, :subject, :zoneId, :manage_id, :csr
 
   def initialize(d)
     @status = d['status']
     @subject = d['subjectDN'] or d['subjectCN'][0]
+    @subject_alt_names = d['subjectAlternativeNamesByType']
     @zoneId = d['zoneId']
     @manage_id = d['managedCertificateId']
+    @csr = d['certificateSigningRequest']
+    @key_lenght = d['keyLength']
+    @key_type = d['keyType']
   end
 end
 
@@ -56,7 +60,7 @@ class Vcert::CloudConnection
     end
   end
 
-  def renew(request)
+  def renew(request, key_reuse)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
@@ -83,6 +87,10 @@ class Vcert::CloudConnection
     if zone == nil
       prev_request = get_cert_status(request)
       zone = prev_request.zoneId
+    end
+
+    if key_reuse
+      renew_request = create_request_from_csr(prev_request.csr)
     end
 
     d = {existingManagedCertificateId: manage_id, zoneId: zone}

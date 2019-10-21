@@ -299,5 +299,16 @@ module Vcert
       self.type == other.type && self.option == other.option
     end
   end
+
+  class CreateRequestFromCSR
+    def initialize(csr)
+      @csr = csr
+      @request = Vcert::Request.new
+    end
+
+    def parse_csr_fields
+
+    end
+  end
 end
 

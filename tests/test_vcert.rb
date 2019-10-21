@@ -63,7 +63,7 @@ class VcertTest < Minitest::Test
     # Renew test
     renew_request = Vcert::Request.new
     renew_request.id = request.id
-    renew_cert_id = conn.renew(renew_request)
+    renew_cert_id = conn.renew(renew_request, true)
     renew_request.id = renew_cert_id
     renew_cert = conn.retrieve(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))

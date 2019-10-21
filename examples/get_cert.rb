@@ -12,6 +12,10 @@ conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 
 request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
+zone_config = conn.zone_configuration(CLOUDZONE)
+
+request.update_from_zone_config(zone_config)
+
 certificate = conn.request_and_retrieve(request, CLOUDZONE, 600)
 
 
