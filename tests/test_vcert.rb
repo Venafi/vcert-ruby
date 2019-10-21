@@ -10,6 +10,7 @@ TPPURL = ENV['TPPURL']
 TPPUSER = ENV['TPPUSER']
 TPPPASSWORD = ENV['TPPPASSWORD']
 TPPZONE = ENV["TPPZONE"]
+TRUST_BUNDLE = ENV["TRUST_BUNDLE"]
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -28,7 +29,7 @@ AilzNOkXEeBwCT79bdpc3xh/hrjf9PeItLMpS7lVUUYQH18JK203BMGOE76EaELA
 fk2X1wGedpdby5XRW0a7qozvwdBBTfI6/yMTP+iF5ghzvpCGtX2tYkyQ0I2GT/hV
 YuWiOhL8NVOxPWFbiKWghQ2qH3hE0arsDA==
 -----END CERTIFICATE REQUEST-----"
-TEST_DOMAIN = ENV['TEST_DOMAIN']
+TEST_DOMAIN = "example.com"
 
 def random_string(length)
   Array.new(length) { Array('a'..'z').sample }.join
@@ -83,7 +84,7 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
     req = Vcert::Request.new common_name: 'test432432423.example.com'
     cert = conn.request_and_retrieve req, TPPZONE, 600
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
@@ -92,16 +93,20 @@ class VcertTest < Minitest::Test
 
 
   def test_zone_configuration_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
 
     zone = conn.zone_configuration TPPZONE
   end
 
   def test_read_policy_tpp
-    conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD
+    conn = tpp_connection
 
     policy = conn.policy TPPZONE
   end
+end
+
+def tpp_connection
+  Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
 end
 
 class VcertLocalTest < Minitest::Test
@@ -117,10 +122,10 @@ class VcertLocalTest < Minitest::Test
     req = Vcert::Request.new common_name: random_domain, organization: "Venafi", organizational_unit: "Devops", country: "US", locality: "Salt Lake", province: "Utah"
     temp = req.csr
     assert_equal(temp, req.csr)
-    req = Vcert::Request.new common_name: random_domain, key_type: "rsa", key_length: 4096
+    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("rsa", 4096)
     csr = OpenSSL::X509::Request.new req.csr
     assert_equal(csr.public_key.n.num_bytes * 8, 4096)
-    req = Vcert::Request.new common_name: random_domain, key_type: "ec"
+    req = Vcert::Request.new common_name: random_domain, key_type: Vcert::KeyType.new("ecdsa", "prime256v1")
     csr = OpenSSL::X509::Request.new req.csr
     assert_instance_of(OpenSSL::PKey::EC, csr.public_key)
   end
@@ -143,7 +148,7 @@ class VcertLocalTest < Minitest::Test
                           subject_ou_regexes:nil, subject_st_regexes:nil, subject_l_regexes:nil, subject_c_regexes:nil, san_regexes:nil,
                           key_types:nil
     assert(!p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), []))
-    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "sec256k1"), Vcert::KeyType.new("rsa", 2048)]))
+    assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("ec", "prime256v1"), Vcert::KeyType.new("rsa", 2048)]))
     assert(p.send(:is_key_type_is_valid?, Vcert::KeyType.new("rsa", 2048), [Vcert::KeyType.new("rsa", 2048)]))
   end
 
@@ -156,7 +161,7 @@ class VcertLocalTest < Minitest::Test
                                      locality: f.new("Salt Lake", locked: true),
                                      organization: f.new("Venafi", locked: true),
                                      organizational_unit: f.new(["Integsation", "Devops"]),
-                                     key_type: f.new(Vcert::KeyType.new("ec", "sec256k1"))
+                                     key_type: f.new(Vcert::KeyType.new("ec", "prime256v1"))
     r.update_from_zone_config(z)
     assert_equal(r.country, "US")
     assert_equal(r.province, "Utah")
@@ -164,8 +169,37 @@ class VcertLocalTest < Minitest::Test
     assert_equal(r.organization, "Venafi")
     assert_equal(r.organizational_unit, ["Integsation", "Devops"])
     assert_equal(r.key_type.type, "ecdsa")
-    assert_equal(r.key_type.option, "sec256k1")
-
+    assert_equal(r.key_type.option, "prime256v1")
   end
 
+  def test_check_with_policies
+    r = Vcert::Request.new common_name: "test.example.com"
+    p = new_policy_test_wrapper
+    assert_nil(p.check_request(r))
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"])
+    assert_raises do
+      p.check_request(r)
+    end
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"], key_types: [Vcert::KeyType.new("rsa", 2048), Vcert::KeyType.new("ecdsa", "secp521r1")])
+    r = Vcert::Request.new common_name: "test.venafi.com", key_type: Vcert::KeyType.new("ecdsa", "prime256v1")
+    assert_raises do
+      p.check_request(r)
+    end
+    #todo: add more tests
+  end
+
+end
+
+def new_policy_test_wrapper(policy_id: nil, name: "", system_generated: false, creation_date: nil,
+                            subject_cn_regexes:[".*"], subject_o_regexes: [".*"], subject_ou_regexes:[".*"],
+                            subject_st_regexes:[".*"], subject_l_regexes:[".*"], subject_c_regexes:[".*"],
+                            san_regexes:[".*"], key_types: nil)
+  if key_types == nil
+    key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map {|c| Vcert::KeyType.new("ecdsa", c) }
+  end
+  Vcert::Policy.new(policy_id: policy_id, name: name, system_generated: system_generated, creation_date: creation_date,
+                    subject_cn_regexes: subject_cn_regexes, subject_o_regexes: subject_o_regexes,
+                    subject_ou_regexes: subject_ou_regexes, subject_st_regexes: subject_st_regexes,
+                    subject_l_regexes: subject_l_regexes, subject_c_regexes: subject_c_regexes, san_regexes: san_regexes,
+                    key_types: key_types)
 end

@@ -1,4 +1,5 @@
 require 'json'
+require 'utils/utils'
 
 class CertificateStatusResponse
 
@@ -158,7 +159,6 @@ class Vcert::CloudConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + "/" + url
 
 
@@ -190,7 +190,6 @@ class Vcert::CloudConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    # request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
@@ -213,25 +212,6 @@ class Vcert::CloudConnection
     cert
   end
 
-  def parse_pem_list(multiline)
-    pems = []
-    buf = ""
-    current_string_is_pem = false
-    multiline.each_line do |line|
-      if line.match(/-----BEGIN [A-Z]+-----/)
-        current_string_is_pem = true
-      end
-      if current_string_is_pem
-        buf = buf + line
-      end
-      if line.match(/-----END [A-Z]+-----/)
-        current_string_is_pem = false
-        pems.push(buf)
-        buf = ""
-      end
-    end
-    pems
-  end
 
   def get_policy_by_id(policy_id)
     status, data = get(URL_TEMPLATE_BY_ID % policy_id)
