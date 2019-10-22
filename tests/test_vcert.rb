@@ -87,15 +87,19 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
+    cn = random_domain
     conn = tpp_connection
-    req = Vcert::Request.new common_name: 'test432432423.example.com'
-    cert = conn.request_and_retrieve req, TPPZONE, 600
+    request = Vcert::Request.new common_name: cn
+    cert = conn.request_and_retrieve request, TPPZONE, 600
+    zone_config = conn.zone_configuration(TPPZONE)
+    request.update_from_zone_config(zone_config)
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
     assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
 
+    LOG.info("csr is:\n#{request.csr}")
     #renew
     renew_request = Vcert::Request.new
-    renew_request.id = req.id
+    renew_request.id = request.id
     renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
     renew_cert = conn.retrieve(renew_request)

@@ -186,23 +186,17 @@ class Vcert::TPPConnection
       vaultId = r["VaultIDs"][0]
       _, r = post(URL_SECRET_STORE_RETRIEVE, d = {"VaultID": vaultId})
       csr_base64_data = r['Base64Data']
-      # require "base64"
-      # csr_der = Base64.decode64(csr_base64_data['Base64Data'])
-      # asn1 = OpenSSL::ASN1.decode(csr_der)
-      #
-      #   puts csr_p10
       csr_pem = "-----BEGIN CERTIFICATE REQUEST-----\n#{csr_base64_data}\n-----END CERTIFICATE REQUEST-----\n"
       parsed_csr = parse_csr_fields(csr_pem)
       renew_request = Vcert::Request.new(
           common_name: parsed_csr.fetch(:CN,nil),
-          san_dns: [parsed_csr.fetch(:DNS,nil)] ,
+          san_dns: parsed_csr.fetch(:DNS,nil),
           country: parsed_csr.fetch(:C,nil),
           province: parsed_csr.fetch(:ST,nil),
           locality: parsed_csr.fetch(:L,nil),
           organization: parsed_csr.fetch(:O,nil),
           organizational_unit: parsed_csr.fetch(:OU,nil))
       d.merge!(certificateSigningRequest: renew_request.csr)
-      puts renew_request.inspect
     end
     LOG.info("Trying to renew certificate %s" % request.id)
     _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)

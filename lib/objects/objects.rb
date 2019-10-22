@@ -60,6 +60,9 @@ module Vcert
       csr.subject = subject
       csr.public_key = @public_key
       if @san_dns != nil
+        if !@san_dns.kind_of?(Array)
+          @san_dns = [@san_dns]
+        end
         #TODO: add check that san_dns is an array
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [
