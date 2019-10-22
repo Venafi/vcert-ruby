@@ -1,13 +1,15 @@
 require 'json'
 require 'date'
 require 'base64'
+require 'utils/utils'
 
 class Vcert::TPPConnection
-  def initialize(url, user, password)
+  def initialize(url, user, password, trust_bundle:nil)
     @url = normalize_url url
     @user = user
     @password = password
     @token = nil
+    @trust_bundle = trust_bundle
   end
 
   def request(zone_tag, request)
@@ -126,7 +128,7 @@ class Vcert::TPPConnection
       upnSanRegExs = []
     end
     unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
-      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + ["prime256v1"].map{|c| Vcert::KeyType.new("ec", c)} #todo: add all curves
+      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
     else
       if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
         if policy["KeyPair"]["KeySize"]["Locked"]
@@ -135,14 +137,20 @@ class Vcert::TPPConnection
           key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) }
         end
       elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
-        # todo: Write
+        if policy["KeyPair"]["EllipticCurve"]["Locked"]
+          curve = {"p224" => "secp224r1", "p256" => "prime256v1", "p521" => "secp521r1"}[policy["KeyPair"]["EllipticCurve"]["Value"].downcase]
+          key_types = [Vcert::KeyType.new("ecdsa", curve)]
+        else
+          key_types = Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
+        end
       end
     end
 
-    p = Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, subject_cn_regexes: subjectCNRegex,
-        subject_o_regexes: subjectORegexes, subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
-                      subject_l_regexes: subjectLRegexes, subject_c_regexes:subjectCRegexes, san_regexes:dnsSanRegExs,
-        key_types: key_types)
+    Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, system_generated: false, creation_date: nil,
+                      subject_cn_regexes: subjectCNRegex, subject_o_regexes: subjectORegexes,
+                      subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
+                      subject_l_regexes: subjectLRegexes, subject_c_regexes: subjectCRegexes, san_regexes: dnsSanRegExs,
+                      key_types: key_types)
   end
 
 
@@ -157,9 +165,9 @@ class Vcert::TPPConnection
     city = Vcert::CertField.new s["City"]["Value"], locked: s["City"]["Locked"]
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
-    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], key_length: response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    z = Vcert::ZoneConfiguration.new country, state, city, organization, organizational_unit, key_type
-    z
+    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
+    Vcert::ZoneConfiguration.new country:country, province: state, locality: city, organization: organization,
+                                     organizational_unit: organizational_unit, key_type:key_type
   end
 
   def renew(request)
@@ -198,7 +206,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + URL_AUTHORIZE
     data = {:Username => @user, :Password => @password}
     encoded_data = JSON.generate(data)
@@ -216,7 +226,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + url
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
@@ -231,7 +243,9 @@ class Vcert::TPPConnection
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
-    request.verify_mode = OpenSSL::SSL::VERIFY_NONE # todo: investigate verifying
+    if @trust_bundle != nil
+      request.ca_file = @trust_bundle
+    end
     url = uri.path + url
     response = request.get(url, {TOKEN_HEADER_NAME => @token[0]})
     data = JSON.parse(response.body)
@@ -272,27 +286,7 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new cert: pems[0], chain: pems[1..-1], private_key: nil # todo: parser
-  end
-
-  def parse_pem_list(multiline)
-    pems = []
-    buf = ""
-    current_string_is_pem = false
-    multiline.each_line do |line|
-      if line.match(/-----BEGIN [A-Z\ ]+-----/)
-        current_string_is_pem = true
-      end
-      if current_string_is_pem
-        buf = buf + line
-      end
-      if line.match(/-----END [A-Z\ ]+-----/)
-        current_string_is_pem = false
-        pems.push(buf)
-        buf = ""
-      end
-    end
-    pems
+    Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil
   end
 
   def search_by_thumbprint(thumbprint)

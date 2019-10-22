@@ -3,11 +3,11 @@ require 'time'
 
 module Vcert
   class Connection
-    def initialize(url: nil, user: nil, password: nil, cloud_token: nil)
+    def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil)
       if cloud_token != nil then
         @conn = CloudConnection.new url, cloud_token
       elsif user != nil && password != nil && url != nil then
-        @conn = TPPConnection.new url, user, password
+        @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
       else
         raise "Invalid credentials list" # todo: add typed exceptions
       end
@@ -21,6 +21,7 @@ module Vcert
     end
 
     # @param [Request] request
+    # @return [Certificate]
     def retrieve(request)
       @conn.retrieve(request)
     end
@@ -30,11 +31,13 @@ module Vcert
     end
 
     # @param [String] zone
+    # @return [ZoneConfiguration]
     def zone_configuration(zone)
       @conn.zone_configuration(zone)
     end
 
     # @param [String] zone
+    # @return [Policy]
     def policy(zone)
       @conn.policy(zone)
     end
@@ -46,12 +49,13 @@ module Vcert
     # @param [Request] req
     # @param [String] zone
     # @param [Integer] timeout
+    # @return [Certificate]
     def request_and_retrieve(req, zone, timeout)
       request zone, req
       t = Time.new() + timeout
       loop do
         if Time.new() > t
-          #todo log
+          LOG.info("Waiting certificate #{req.id}")
           break
         end
         certificate = retrieve(req)

@@ -2,8 +2,10 @@ require 'openssl'
 require "logger"
 LOG = Logger.new(STDOUT)
 
+OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 
 module Vcert
+  SUPPORTED_CURVES = ["secp224r1", "prime256v1", "secp521r1"]
   class Request
     attr_accessor :id
     attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
@@ -13,6 +15,7 @@ module Vcert
                    friendly_name: nil, csr: nil)
       @common_name = common_name
       @private_key = private_key
+      #todo: parse private key and set public
       if key_type != nil && !key_type.instance_of?(KeyType)
         raise "key_type bad type. should be Vcert::KeyType. for example KeyType('rsa', 2048)"
       end
@@ -55,8 +58,9 @@ module Vcert
       csr = OpenSSL::X509::Request.new
       csr.version = 0
       csr.subject = subject
-      csr.public_key = @private_key.public_key
+      csr.public_key = @public_key
       if @san_dns != nil
+        #TODO: add check that san_dns is an array
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [
             OpenSSL::X509::ExtensionFactory.new.create_extension('subjectAltName', san_list.join(','))
@@ -119,7 +123,6 @@ module Vcert
       if zone_config.key_type.locked || (@key_type == nil && zone_config.key_type.value != nil)
         @key_type = zone_config.key_type.value
       end
-      #todo: think. may be we should regenerate csr and private key.
     end
 
     private
@@ -127,12 +130,15 @@ module Vcert
 
     def generate_private_key
       if @key_type == nil
-        @key_type = KeyType.new("rsa", 2048)
+        @key_type = DEFAULT_KEY_TYPE
       end
       if @key_type.type == "rsa"
         @private_key = OpenSSL::PKey::RSA.new @key_type.option
+        @public_key = @private_key.public_key
       elsif @key_type.type == "ecdsa"
-        @private_key = OpenSSL::PKey::EC.new @key_type.option
+        @private_key, @public_key = OpenSSL::PKey::EC.new(@key_type.option), OpenSSL::PKey::EC.new(@key_type.option)
+        @private_key.generate_key
+        @public_key.public_key = @private_key.public_key
       end
     end
   end
@@ -209,6 +215,9 @@ module Vcert
     private
 
     def is_key_type_is_valid?(key_type, allowed_key_types)
+      if key_type == nil
+        key_type = DEFAULT_KEY_TYPE
+      end
       for i in 0 ... allowed_key_types.length
         if allowed_key_types[i] == key_type
           return true
@@ -218,6 +227,9 @@ module Vcert
     end
 
     def component_is_valid?(component, regexps, optional:false)
+      if component == nil
+        component = []
+      end
       unless component.instance_of? Array
         component = [component]
       end
@@ -253,6 +265,7 @@ module Vcert
     # @param [CertField] locality
     # @param [CertField] organization
     # @param [CertField] organizational_unit
+    # @param [CertField] key_type
     def initialize(country:, province:, locality:, organization:, organizational_unit:, key_type:)
       @country = country
       @province = province
@@ -281,15 +294,15 @@ module Vcert
         raise "bad key type"
       end
       if @type == "rsa"
-        if [512, 1024, 2048, 3072, 4096, 8192].include?(option)
-          @option = option
-        else
+        unless  [512, 1024, 2048, 3072, 4096, 8192].include?(option)
           raise "bad option for rsa key: #{option}. should be one from list 512, 1024, 2048, 3072, 4096, 8192"
         end
       else
-        #todo: curve validations
-        @option = option
+        unless SUPPORTED_CURVES.include?(option)
+          raise "bad option for ec key: #{option}. should be one from list #{ SUPPORTED_CURVES}"
+        end
       end
+      @option = option
     end
     def ==(other)
       unless other.instance_of? KeyType
@@ -298,5 +311,7 @@ module Vcert
       self.type == other.type && self.option == other.option
     end
   end
+
+  DEFAULT_KEY_TYPE = KeyType.new("rsa", 2048)
 end
 
