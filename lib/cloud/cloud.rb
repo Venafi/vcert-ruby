@@ -61,7 +61,7 @@ class Vcert::CloudConnection
     end
   end
 
-  def renew(request, key_reuse: true)
+  def renew(request, generate_new_key: true)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
@@ -94,7 +94,7 @@ class Vcert::CloudConnection
     if request.csr?
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
-    elsif key_reuse
+    elsif generate_new_key
       parsed_csr = parse_csr_fields(prev_request.csr)
       renew_request = Vcert::Request.new(
           common_name: parsed_csr[:CN],
@@ -111,7 +111,7 @@ class Vcert::CloudConnection
 
     status, data = post(URL_CERTIFICATE_REQUESTS, data = d)
     if status == 201
-      if key_reuse
+      if generate_new_key
         return data['certificateRequests'][0]['id'], renew_request.private_key
       else
         return data['certificateRequests'][0]['id'], nil
