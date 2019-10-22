@@ -1,22 +1,6 @@
 require 'json'
 require 'utils/utils'
 
-class CertificateStatusResponse
-
-  attr_reader :status, :subject, :zoneId, :manage_id, :csr
-
-  def initialize(d)
-    @status = d['status']
-    @subject = d['subjectDN'] or d['subjectCN'][0]
-    @subject_alt_names = d['subjectAlternativeNamesByType']
-    @zoneId = d['zoneId']
-    @manage_id = d['managedCertificateId']
-    @csr = d['certificateSigningRequest']
-    @key_lenght = d['keyLength']
-    @key_type = d['keyType']
-  end
-end
-
 class Vcert::CloudConnection
   def initialize(url, token)
     @url = url
@@ -71,8 +55,8 @@ class Vcert::CloudConnection
     end
     if request.id != nil
       prev_request = get_cert_status(request)
-      manage_id = prev_request.manage_id
-      zone = prev_request.zoneId
+      manage_id = prev_request[:manage_id]
+      zone = prev_request[:zoneId]
     end
     if manage_id == nil
       raise "Can`t find manage_id"
@@ -87,7 +71,7 @@ class Vcert::CloudConnection
 
     if zone == nil
       prev_request = get_cert_status(request)
-      zone = prev_request.zoneId
+      zone = prev_request[:zoneId]
     end
 
     d = {existingManagedCertificateId: manage_id, zoneId: zone}
@@ -95,7 +79,7 @@ class Vcert::CloudConnection
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
     elsif generate_new_key
-      parsed_csr = parse_csr_fields(prev_request.csr)
+      parsed_csr = parse_csr_fields(prev_request[:csr])
       renew_request = Vcert::Request.new(
           common_name: parsed_csr[:CN],
           san_dns: [parsed_csr[:DNS]],
@@ -265,9 +249,17 @@ class Vcert::CloudConnection
   end
 
   def get_cert_status(request)
-    status, data = get(URL_CERTIFICATE_STATUS % request.id)
+    status, d = get(URL_CERTIFICATE_STATUS % request.id)
     if status == 200
-      request_status = CertificateStatusResponse.new(data)
+      request_status = Hash.new
+      request_status[:status] = d['status']
+      request_status[:subject] = d['subjectDN'] or d['subjectCN'][0]
+      request_status[:subject_alt_names] = d['subjectAlternativeNamesByType']
+      request_status[:zoneId] = d['zoneId']
+      request_status[:manage_id] = d['managedCertificateId']
+      request_status[:csr] = d['certificateSigningRequest']
+      request_status[:key_lenght] = d['keyLength']
+      request_status[:key_type] = d['keyType']
       return request_status
     else
       raise "Server unexpted behavior"
