@@ -4,7 +4,7 @@ require 'base64'
 require 'utils/utils'
 
 class Vcert::TPPConnection
-  def initialize(url, user, password, trust_bundle:nil)
+  def initialize(url, user, password, trust_bundle: nil)
     @url = normalize_url url
     @user = user
     @password = password
@@ -61,6 +61,7 @@ class Vcert::TPPConnection
         return addStartEnd(regexp.QuoteMeta(value))
       end
     end
+
     policy = response["Policy"]
     s = policy["Subject"]
     if policy["WhitelistedDomains"]
@@ -112,12 +113,12 @@ class Vcert::TPPConnection
       ipSanRegExs = []
     end
     if policy["SubjAltNameEmailAllowed"]
-      emailSanRegExs = [ALL_ALLOWED_REGEX]  # todo: support
+      emailSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
     else
       emailSanRegExs = []
     end
     if policy["SubjAltNameUriAllowed"]
-      uriSanRegExs = [ALL_ALLOWED_REGEX]  # todo: support
+      uriSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
     else
       uriSanRegExs = []
     end
@@ -128,20 +129,20 @@ class Vcert::TPPConnection
       upnSanRegExs = []
     end
     unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
-      key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
+      key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
     else
       if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
         if policy["KeyPair"]["KeySize"]["Locked"]
           key_types = [Vcert::KeyType.new("rsa", policy["KeyPair"]["KeySize"]["Value"])]
         else
-          key_types = [1024, 2048, 4096, 8192].map {|s| Vcert::KeyType.new("rsa", s) }
+          key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) }
         end
       elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
         if policy["KeyPair"]["EllipticCurve"]["Locked"]
           curve = {"p224" => "secp224r1", "p256" => "prime256v1", "p521" => "secp521r1"}[policy["KeyPair"]["EllipticCurve"]["Value"].downcase]
           key_types = [Vcert::KeyType.new("ecdsa", curve)]
         else
-          key_types = Vcert::SUPPORTED_CURVES.map{|c| Vcert::KeyType.new("ecdsa", c)}
+          key_types = Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
         end
       end
     end
@@ -166,29 +167,49 @@ class Vcert::TPPConnection
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
     key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    Vcert::ZoneConfiguration.new country:country, province: state, locality: city, organization: organization,
-                                     organizational_unit: organizational_unit, key_type:key_type
+    Vcert::ZoneConfiguration.new country: country, province: state, locality: city, organization: organization,
+                                 organizational_unit: organizational_unit, key_type: key_type
   end
 
-  def renew(request)
+  def renew(request, generate_new_key: true)
     if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
     end
 
     if request.thumbprint != nil
-      manage_id = search_by_thumbprint(request.thumbprint)
+      request.id = search_by_thumbprint(request.thumbprint)
     end
-    if request.id != nil
-      prev_request = get_cert_status(request)
-      manage_id = prev_request.manage_id
-      zone = prev_request.zoneId
+    renew_req_data = {"CertificateDN": request.id}
+    if generate_new_key
+      #   TODO: find certificaite vaultId
+      _, r = post(URL_SECRET_STORE_SEARCH, d = {"Namespace": "config", "Owner": request.id, "VaultType": 512})
+      vaultId = r["VaultIDs"][0]
+      _, r = post(URL_SECRET_STORE_RETRIEVE, d = {"VaultID": vaultId})
+      csr_base64_data = r['Base64Data']
+      # require "base64"
+      # csr_der = Base64.decode64(csr_base64_data['Base64Data'])
+      # asn1 = OpenSSL::ASN1.decode(csr_der)
+      #
+      #   puts csr_p10
+      csr_pem = "-----BEGIN CERTIFICATE REQUEST-----\n#{csr_base64_data}\n-----END CERTIFICATE REQUEST-----\n"
+      parsed_csr = parse_csr_fields(csr_pem)
+      renew_request = Vcert::Request.new(
+          common_name: parsed_csr.fetch(:CN,nil),
+          san_dns: [parsed_csr.fetch(:DNS,nil)] ,
+          country: parsed_csr.fetch(:C,nil),
+          province: parsed_csr.fetch(:ST,nil),
+          locality: parsed_csr.fetch(:L,nil),
+          organization: parsed_csr.fetch(:O,nil),
+          organizational_unit: parsed_csr.fetch(:OU,nil))
+      d.merge!(certificateSigningRequest: renew_request.csr)
+      puts renew_request.inspect
     end
-    if manage_id == nil
-      raise "Can`t find manage_id"
-    end
-    status, data = self._post(URLS.CERTIFICATE_RENEW, data={"CertificateDN": request.id})
-    if not data['Success']
-        raise "Certificate renew error"
+    LOG.info("Trying to renew certificate %s" % request.id)
+    _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)
+    if d.key?('Success')
+      return request.id
+    else
+      raise "Certificate renew error"
     end
 
   end
@@ -199,9 +220,14 @@ class Vcert::TPPConnection
   URL_CERTIFICATE_REQUESTS = "certificates/request"
   URL_ZONE_CONFIG = "certificates/checkpolicy"
   URL_CERTIFICATE_RETRIEVE = "certificates/retrieve"
-  URL_CERTIFICATE_SEARCH= "certificates/"
+  URL_CERTIFICATE_SEARCH = "certificates/"
+  URL_CERTIFICATE_RENEW = "certificates/renew"
+  URL_SECRET_STORE_SEARCH = "SecretStore/LookupByOwner"
+  URL_SECRET_STORE_RETRIEVE = "SecretStore/Retrieve"
+
   TOKEN_HEADER_NAME = "x-venafi-api-key"
   ALL_ALLOWED_REGEX = ".*"
+
   def auth
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
@@ -286,13 +312,13 @@ class Vcert::TPPConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    Vcert::Certificate.new cert:pems[0], chain: pems[1..-1], private_key: nil
+    Vcert::Certificate.new cert: pems[0], chain: pems[1..-1], private_key: nil
   end
 
   def search_by_thumbprint(thumbprint)
     # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-    status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
+    status, data = post(URL_CERTIFICATE_SEARCH, data = {expression: {operands: [
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
     # TODO: check that data have valid certificate in it
     if status != 200

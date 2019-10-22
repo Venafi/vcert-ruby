@@ -23,34 +23,49 @@ def parse_csr_fields(csr)
   result = Hash.new
 
   subject_array = csr_obj.subject.to_a
-  cn = subject_array.select{|name, _, _| name == 'CN' }.first[1]
-  o = subject_array.select{|name, _, _| name == 'O' }.first[1]
-  ou = subject_array.select{|name, _, _| name == 'OU' }.first[1]
-  st = subject_array.select{|name, _, _| name == 'ST' }.first[1]
-  c = subject_array.select{|name, _, _| name == 'C' }.first[1]
-  l = subject_array.select{|name, _, _| name == 'L' }.first[1]
+  cn = subject_array.select { |name, _, _| name == 'CN' }.first
+  o = subject_array.select { |name, _, _| name == 'O' }.first
+  ou = subject_array.select { |name, _, _| name == 'OU' }.first
+  st = subject_array.select { |name, _, _| name == 'ST' }.first
+  c = subject_array.select { |name, _, _| name == 'C' }.first
+  l = subject_array.select { |name, _, _| name == 'L' }.first
 
-  result[:CN] = cn
-  result[:O] = o
-  result[:OU] = ou
-  result[:ST] = st
-  result[:C] = c
-  result[:L] = l
+  if cn != nil
+    result[:CN] = cn[1]
+  end
+  if o != nil
+    result[:O] = o[1]
+  end
+  if ou != nil
+    result[:OU] = ou[1]
+  end
+  if st != nil
+    result[:ST] = st[1]
+  end
+  if c != nil
+    result[:C] = c[1]
+  end
+  if l != nil
+    result[:L] = l[1]
+  end
+
 
   attributes = csr_obj.attributes
-  return nil if not attributes
 
   seq = nil
   values = nil
 
+  if attributes
   attributes.each do |a|
     if a.oid == 'extReq'
       seq = a.value
       break
     end
   end
-  return nil if not seq
+  # return nil if not seq
+  end
 
+  if seq
   seq.value.each do |v|
     v.each do |v|
       if v.value[0].value == 'subjectAltName'
@@ -60,8 +75,12 @@ def parse_csr_fields(csr)
       break if values
     end
   end
-  return nil if not values
+    # return nil if not values
+  end
 
+
+
+  if values
   values = OpenSSL::ASN1.decode(values).value
 
   values.each do |v|
@@ -82,6 +101,7 @@ def parse_csr_fields(csr)
     else
       STDERR.print "Uknown tag #{v.tag} -- I only know 2 (DNS) and 7 (IP)\n"
     end
+  end
   end
   LOG.info("Parsed CSR fields:\n #{result.inspect}")
   return result

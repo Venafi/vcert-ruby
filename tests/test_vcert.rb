@@ -92,6 +92,15 @@ class VcertTest < Minitest::Test
     cert = conn.request_and_retrieve req, TPPZONE, 600
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
     assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
+
+    #renew
+    renew_request = Vcert::Request.new
+    renew_request.id = req.id
+    renew_cert_id, renew_private_key = conn.renew(renew_request)
+    renew_request.id = renew_cert_id
+    renew_cert = conn.retrieve(renew_request)
+    LOG.info(("renewd cert is:\n" + renew_cert.cert))
+    LOG.info(("renewd cert key is:\n" + renew_private_key))
   end
 
 
