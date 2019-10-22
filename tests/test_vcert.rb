@@ -64,12 +64,15 @@ class VcertTest < Minitest::Test
     # Renew test
     renew_request = Vcert::Request.new
     renew_request.id = request.id
-    renew_cert_id = conn.renew(renew_request)
+    renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
     renew_cert = conn.retrieve(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))
+    LOG.info(("renewd cert key is:\n" + renew_private_key))
     renew_certificate_object = OpenSSL::X509::Certificate.new(renew_cert.cert)
-    assert renew_certificate_object.check_private_key(key_object), "Renewed cert not signed by original jey"
+    assert !renew_certificate_object.check_private_key(key_object), "Renewed cert signed by same key"
+    renew_key_object = OpenSSL::PKey::RSA.new(renew_private_key)
+    assert renew_certificate_object.check_private_key(renew_key_object), "Renewed cert signed by the wrong key"
     assert (certificate_object.serial != renew_certificate_object.serial), "Original cert sn and renew sn are equal"
     assert (certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1] == renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1])
 

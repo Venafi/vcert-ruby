@@ -311,6 +311,7 @@ module Vcert
       self.type == other.type && self.option == other.option
     end
   end
+
   DEFAULT_KEY_TYPE = KeyType.new("rsa", 2048)
 end
 

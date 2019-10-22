@@ -1,18 +1,6 @@
 require 'json'
 require 'utils/utils'
 
-class CertificateStatusResponse
-
-  attr_reader :status, :subject, :zoneId, :manage_id
-
-  def initialize(d)
-    @status = d['status']
-    @subject = d['subjectDN'] or d['subjectCN'][0]
-    @zoneId = d['zoneId']
-    @manage_id = d['managedCertificateId']
-  end
-end
-
 class Vcert::CloudConnection
   def initialize(url, token)
     @url = url
@@ -57,7 +45,7 @@ class Vcert::CloudConnection
     end
   end
 
-  def renew(request)
+  def renew(request, generate_new_key: true)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
       raise("request id or certificate thumbprint must be specified for renewing certificate")
@@ -67,8 +55,8 @@ class Vcert::CloudConnection
     end
     if request.id != nil
       prev_request = get_cert_status(request)
-      manage_id = prev_request.manage_id
-      zone = prev_request.zoneId
+      manage_id = prev_request[:manage_id]
+      zone = prev_request[:zoneId]
     end
     if manage_id == nil
       raise "Can`t find manage_id"
@@ -83,20 +71,36 @@ class Vcert::CloudConnection
 
     if zone == nil
       prev_request = get_cert_status(request)
-      zone = prev_request.zoneId
+      zone = prev_request[:zoneId]
     end
 
     d = {existingManagedCertificateId: manage_id, zoneId: zone}
     if request.csr?
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
+    elsif generate_new_key
+      parsed_csr = parse_csr_fields(prev_request[:csr])
+      renew_request = Vcert::Request.new(
+          common_name: parsed_csr[:CN],
+          san_dns: [parsed_csr[:DNS]],
+          country: parsed_csr[:C],
+          province: parsed_csr[:ST],
+          locality: parsed_csr[:L],
+          organization: parsed_csr[:O],
+          organizational_unit: parsed_csr[:OU])
+      d.merge!(certificateSigningRequest: renew_request.csr)
     else
       d.merge!(reuseCSR: true)
     end
 
     status, data = post(URL_CERTIFICATE_REQUESTS, data = d)
     if status == 201
-      return data['certificateRequests'][0]['id']
+      if generate_new_key
+        return data['certificateRequests'][0]['id'], renew_request.private_key
+      else
+        return data['certificateRequests'][0]['id'], nil
+      end
+
     else
       raise "server unexpected status: #{status}\n message: #{data}"
     end
@@ -235,7 +239,7 @@ class Vcert::CloudConnection
   def search_by_thumbprint(thumbprint)
     # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-    status, data = post(URL_CERTIFICATE_SEARCH, data={expression: {operands: [
+    status, data = post(URL_CERTIFICATE_SEARCH, data = {expression: {operands: [
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
     # TODO: check that data have valid certificate in it
     if status != 200
@@ -245,9 +249,17 @@ class Vcert::CloudConnection
   end
 
   def get_cert_status(request)
-    status, data = get(URL_CERTIFICATE_STATUS % request.id)
+    status, d = get(URL_CERTIFICATE_STATUS % request.id)
     if status == 200
-      request_status = CertificateStatusResponse.new(data)
+      request_status = Hash.new
+      request_status[:status] = d['status']
+      request_status[:subject] = d['subjectDN'] or d['subjectCN'][0]
+      request_status[:subject_alt_names] = d['subjectAlternativeNamesByType']
+      request_status[:zoneId] = d['zoneId']
+      request_status[:manage_id] = d['managedCertificateId']
+      request_status[:csr] = d['certificateSigningRequest']
+      request_status[:key_lenght] = d['keyLength']
+      request_status[:key_type] = d['keyType']
       return request_status
     else
       raise "Server unexpted behavior"
