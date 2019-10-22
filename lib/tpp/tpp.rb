@@ -167,8 +167,8 @@ class Vcert::TPPConnection
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
     key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    Vcert::ZoneConfiguration.new country: country, province: state, locality: city, organization: organization,
-                                 organizational_unit: organizational_unit, key_type: key_type
+    Vcert::ZoneConfiguration.new country:country, province: state, locality: city, organization: organization,
+                                     organizational_unit: organizational_unit, key_type:Vcert::CertField.new(key_type)
   end
 
   def renew(request, generate_new_key: true)
