@@ -19,7 +19,7 @@ class Vcert::TPPConnection
             :DisableAutomaticRenewal => "true"}
     code, response = post URL_CERTIFICATE_REQUESTS, data
     if code != 200
-      raise "Bad server status code #{code}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status  #{code}"
     end
     request.id = response['CertificateDN']
   end
@@ -41,7 +41,7 @@ class Vcert::TPPConnection
   def policy(zone_tag)
     code, response = post URL_ZONE_CONFIG, {:PolicyDN => policy_dn(zone_tag)}
     if code != 200
-      raise "Bad server status code #{code}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status  #{code}"
     end
 
     def addStartEnd(s)
@@ -158,7 +158,7 @@ class Vcert::TPPConnection
   def zone_configuration(zone_tag)
     code, response = post URL_ZONE_CONFIG, {:PolicyDN => policy_dn(zone_tag)}
     if code != 200
-      raise "Bad server status code #{code}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status  #{code}"
     end
     s = response["Policy"]["Subject"]
     country = Vcert::CertField.new s["Country"]["Value"], locked: s["Country"]["Locked"]
@@ -239,6 +239,9 @@ class Vcert::TPPConnection
     data = {:Username => @user, :Password => @password}
     encoded_data = JSON.generate(data)
     response = request.post(url, encoded_data, {"Content-Type" => "application/json"})
+    if response.code.to_i != 200
+      raise Vcert::AuthenticationError
+    end
     data = JSON.parse(response.body)
     token = data['APIKey']
     valid_until = DateTime.strptime(data['ValidUntil'].gsub(/\D/, ''), '%Q')
@@ -280,7 +283,7 @@ class Vcert::TPPConnection
 
   def policy_dn(zone)
     if zone == nil || zone == ''
-      raise "Empty zone"
+      raise Vcert::ClientBadDataError, "Empty zone"
     end
     if zone =~ /^\\\\VED\\\\Poplicy/
       return zone
@@ -305,7 +308,7 @@ class Vcert::TPPConnection
       url = url + 'vedsdk/'
     end
     unless url =~ /^https:\/\/[a-z\d]+[-a-z\d.]+[a-z\d][:\d]*\/vedsdk\/$/
-      raise("bad TPP url")
+      raise Vcert::ClientBadDataError, "bad TPP url"
     end
     url
   end

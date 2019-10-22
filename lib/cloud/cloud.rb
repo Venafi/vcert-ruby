@@ -26,8 +26,7 @@ class Vcert::CloudConnection
         LOG.info(("Certificate status is %s." % data['status']))
         return nil
       when CERT_STATUS_FAILED
-        LOG.info(("Status is %s. Returning data for debug" % data['status']))
-        raise "Certificate issue FAILED"
+        raise Vcert::ServerUnexpectedBehaviorError, "Certificate issue status is FAILED"
       when CERT_STATUS_ISSUED
         status, full_chain = get(URL_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == 200
@@ -37,10 +36,11 @@ class Vcert::CloudConnection
           end
           return cert
         else
-          raise "Unexpected server behavior"
+          LOG.error("Cant issue certificate: #{full_chain}")
+          raise Vcert::ServerUnexpectedBehaviorError, "Status #{status}"
         end
       else
-        raise "Unexpected server behavior"
+        raise Vcert::ServerUnexpectedBehaviorError, "Unknown certificate status #{data['status']}"
       end
     end
   end
@@ -48,7 +48,7 @@ class Vcert::CloudConnection
   def renew(request, generate_new_key: true)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
-      raise("request id or certificate thumbprint must be specified for renewing certificate")
+      raise Vcert::ClientBadDataError, "request id or certificate thumbprint must be specified for renewing certificate"
     end
     if request.thumbprint != nil
       manage_id = search_by_thumbprint(request.thumbprint)
@@ -59,14 +59,14 @@ class Vcert::CloudConnection
       zone = prev_request[:zoneId]
     end
     if manage_id == nil
-      raise "Can`t find manage_id"
+      raise Vcert::VcertError, "Can`t find manage_id"
     end
 
     status, data = get(URL_MANAGED_CERTIFICATE_BY_ID % manage_id)
     if status == 200
       request.id = data['latestCertificateRequestId']
     else
-      raise "Server Unexpted Behavior"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status #{status}"
     end
 
     if zone == nil
@@ -102,14 +102,14 @@ class Vcert::CloudConnection
       end
 
     else
-      raise "server unexpected status: #{status}\n message: #{data}"
+      raise Vcert::ServerUnexpectedBehaviorError, "status: #{status} message: #{data}"
     end
 
   end
 
   def zone_configuration(tag)
     if tag.to_s.strip.empty?
-      raise "Zone should not be empty"
+      raise Vcert::ClientBadDataError, "Zone should not be empty"
     end
     LOG.info("Getting configuration for zone #{tag}")
     _, data = get(URL_ZONE_BY_TAG % tag)
@@ -162,20 +162,22 @@ class Vcert::CloudConnection
     case response.code.to_i
     when 200, 201, 202, 409
       LOG.info(("HTTP status OK"))
+    when 403
+      raise Vcert::AuthenticationError
     else
-      raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
+      raise Vcert::ServerUnexpectedBehaviorError, "unexpected code #{response.code} for url #{url}. Message: #{response.body}"
     end
     case response.header['content-type']
     when "application/json"
       begin
         data = JSON.parse(response.body)
       rescue JSON::ParserError
-        raise "JSON parse error. Cant parse body response"
+        raise Vcert::ServerUnexpectedBehaviorError, "invalid json"
       end
     when "text/plain"
       data = response.body
     else
-      raise "Can't process content-type #{response.header['content-type']}"
+      raise Vcert::ServerUnexpectedBehaviorError, "unexpected content-type #{response.header['content-type']}"
     end
     # rescue *ALL_NET_HTTP_ERRORS
     return response.code.to_i, data
@@ -192,8 +194,10 @@ class Vcert::CloudConnection
     case response.code.to_i
     when 200, 201, 202, 409
       LOG.info(("HTTP status OK"))
+    when 403
+      raise Vcert::AuthenticationError
     else
-      raise "Bad HTTP code #{response.code} for url #{url}. Message:\n #{response.body}"
+      raise Vcert::ServerUnexpectedBehaviorError, "unexpected code #{response.code} for url #{url}. Message: #{response.body}"
     end
     data = JSON.parse(response.body)
     return response.code.to_i, data
@@ -201,27 +205,26 @@ class Vcert::CloudConnection
 
   def parse_full_chain(full_chain)
     pems = parse_pem_list(full_chain)
-    cert = Vcert::Certificate.new(
+    Vcert::Certificate.new(
         cert: pems[0],
         chain: pems[1..-1]
     )
-    cert
   end
 
 
   def get_policy_by_id(policy_id)
     status, data = get(URL_TEMPLATE_BY_ID % policy_id)
     if status != 200
-      raise("Invalid status during geting policy: %s for policy %s" % status, policy_id)
+      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status during geting policy: %s for policy %s" % status, policy_id
     end
-    return parse_policy_responce_to_object(data)
+    parse_policy_responce_to_object(data)
   end
 
   def parse_policy_responce_to_object(d)
     key_types = []
     # TODO: need to change keytpyes to Vcert::KeyType objects
     d['keyTypes'].each { |kt| key_types.push(['keyType']) }
-    policy = Vcert::Policy.new(policy_id: d['id'],
+    Vcert::Policy.new(policy_id: d['id'],
                                name: d['name'],
                                system_generated: d['systemGenerated'],
                                creation_date: d['creationDate'],
@@ -233,7 +236,6 @@ class Vcert::CloudConnection
                                subject_c_regexes: d['subjectCValues'],
                                san_regexes: d['sanRegexes'],
                                key_types: key_types)
-    return policy
   end
 
   def search_by_thumbprint(thumbprint)
@@ -243,7 +245,7 @@ class Vcert::CloudConnection
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
     # TODO: check that data have valid certificate in it
     if status != 200
-      raise "Unexpected status code on Venafi Cloud certificate search. Status: #{status}. Message:\n #{data.body.to_s}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status: #{status}. Message: #{data.body.to_s}"
     end
     return data['certificates'][0]
   end
@@ -262,7 +264,7 @@ class Vcert::CloudConnection
       request_status[:key_type] = d['keyType']
       return request_status
     else
-      raise "Server unexpted behavior"
+      raise Vcert::ServerUnexpectedBehaviorError, "status: #{status}"
     end
   end
 

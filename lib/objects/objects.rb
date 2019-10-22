@@ -17,7 +17,7 @@ module Vcert
       @private_key = private_key
       #todo: parse private key and set public
       if key_type != nil && !key_type.instance_of?(KeyType)
-        raise "key_type bad type. should be Vcert::KeyType. for example KeyType('rsa', 2048)"
+        raise Vcert::ClientBadDataError, "key_type bad type. should be Vcert::KeyType. for example KeyType('rsa', 2048)"
       end
       @key_type = key_type
       @organization = organization
@@ -178,10 +178,10 @@ module Vcert
     # @param [Request] request
     def simple_check_request(request)
       unless component_is_valid?(request.common_name, @subject_cn_regexes)
-        raise "Common name #{request.common_name} doesnt match #{@subject_cn_regexes}"
+        raise ValidationError, "Common name #{request.common_name} doesnt match #{@subject_cn_regexes}"
       end
       unless component_is_valid?(request.san_dns, @san_regexes, optional: true)
-        raise "SANs #{request.san_dns} doesnt match #{ @san_regexes }"
+        raise ValidationError, "SANs #{request.san_dns} doesnt match #{ @san_regexes }"
       end
 
     end
@@ -191,23 +191,23 @@ module Vcert
       simple_check_request(request)
       # subject
       unless component_is_valid?(request.country, @subject_c_regexes)
-        raise "Country #{request.country} doesnt match #{@subject_c_regexes}"
+        raise ValidationError, "Country #{request.country} doesnt match #{@subject_c_regexes}"
       end
       unless component_is_valid?(request.province, @subject_st_regexes)
-        raise "Province #{request.province} doesnt match #{@subject_st_regexes}"
+        raise ValidationError, "Province #{request.province} doesnt match #{@subject_st_regexes}"
       end
       unless component_is_valid?(request.locality, @subject_l_regexes)
-        raise "Locality #{request.locality} doesnt match #{@subject_l_regexes}"
+        raise ValidationError, "Locality #{request.locality} doesnt match #{@subject_l_regexes}"
       end
       unless component_is_valid?(request.organization, @subject_o_regexes)
-        raise "Organization #{request.organization} doesnt match #{@subject_o_regexes}"
+        raise ValidationError, "Organization #{request.organization} doesnt match #{@subject_o_regexes}"
       end
       unless component_is_valid?(request.organizational_unit, @subject_ou_regexes)
-        raise "Organizational unit #{request.organizational_unit} doesnt match #{@subject_ou_regexes}"
+        raise ValidationError, "Organizational unit #{request.organizational_unit} doesnt match #{@subject_ou_regexes}"
       end
       #todo: add uri, upn, ip, email
       unless is_key_type_is_valid?(request.key_type, @key_types)
-        raise "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
+        raise ValidationError, "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
       end
       # todo: (!important!) parse csr if it alredy generated (!important!)
     end
@@ -291,15 +291,15 @@ module Vcert
     def initialize(type, option)
       @type = {"rsa" => "rsa", "ec" => "ecdsa", "ecdsa" => "ecdsa"}[type.downcase]
       if @type == nil
-        raise "bad key type"
+        raise Vcert::VcertError, "bad key type"
       end
       if @type == "rsa"
         unless  [512, 1024, 2048, 3072, 4096, 8192].include?(option)
-          raise "bad option for rsa key: #{option}. should be one from list 512, 1024, 2048, 3072, 4096, 8192"
+          raise  Vcert::VcertError,"bad option for rsa key: #{option}. should be one from list 512, 1024, 2048, 3072, 4096, 8192"
         end
       else
         unless SUPPORTED_CURVES.include?(option)
-          raise "bad option for ec key: #{option}. should be one from list #{ SUPPORTED_CURVES}"
+          raise Vcert::VcertError, "bad option for ec key: #{option}. should be one from list #{ SUPPORTED_CURVES}"
         end
       end
       @option = option
