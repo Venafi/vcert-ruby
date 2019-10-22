@@ -2,6 +2,12 @@ require 'net/https'
 require 'time'
 
 module Vcert
+  class VcertError < StandardError ; end
+  class AuthenticationError < VcertError; end
+  class ServerUnexpectedBehaviorError < VcertError; end
+  class ClientBadDataError < VcertError; end
+  class ValidationError < VcertError; end
+
   class Connection
     def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil)
       if cloud_token != nil then
@@ -9,7 +15,7 @@ module Vcert
       elsif user != nil && password != nil && url != nil then
         @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
       else
-        raise "Invalid credentials list" # todo: add typed exceptions
+        raise ClientBadDataError, "Invalid credentials list"
       end
     end
 
