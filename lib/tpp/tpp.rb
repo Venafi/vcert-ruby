@@ -201,7 +201,7 @@ class Vcert::TPPConnection
     LOG.info("Trying to renew certificate %s" % request.id)
     _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)
     if d.key?('Success')
-      return request.id
+      return request.id, request.private_key
     else
       raise "Certificate renew error"
     end

@@ -52,7 +52,7 @@ class VcertTest < Minitest::Test
     request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt, san_dns: ["ext-"+cn])
     zone_config = conn.zone_configuration(CLOUDZONE)
     request.update_from_zone_config(zone_config)
-    cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
+    cert = conn.request_and_retrieve(request, CLOUDZONE, timeout: 300)
     LOG.info(("cert is:\n" + cert.cert))
     LOG.info(("pk is:\n" + cert.private_key))
 
@@ -90,7 +90,7 @@ class VcertTest < Minitest::Test
     cn = random_domain
     conn = tpp_connection
     request = Vcert::Request.new common_name: cn
-    cert = conn.request_and_retrieve request, TPPZONE, 600
+    cert = conn.request_and_retrieve request, TPPZONE, timeout: 600
     zone_config = conn.zone_configuration(TPPZONE)
     request.update_from_zone_config(zone_config)
     assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)

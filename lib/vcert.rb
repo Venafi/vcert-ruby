@@ -1,6 +1,8 @@
 require 'net/https'
 require 'time'
 
+TIMEOUT = 420
+
 module Vcert
   class VcertError < StandardError ; end
   class AuthenticationError < VcertError; end
@@ -28,8 +30,9 @@ module Vcert
 
     # @param [Request] request
     # @return [Certificate]
-    def retrieve(request)
-      @conn.retrieve(request)
+    def retrieve(req, timeout: TIMEOUT)
+      cert = retrieve_loop(req, timeout)
+      return cert
     end
 
     def revoke(*args)
@@ -56,26 +59,30 @@ module Vcert
     # @param [String] zone
     # @param [Integer] timeout
     # @return [Certificate]
-    def request_and_retrieve(req, zone, timeout)
+    def request_and_retrieve(req, zone, timeout: TIMEOUT)
       request zone, req
-      t = Time.new() + timeout
-      loop do
-        if Time.new() > t
-          LOG.info("Waiting certificate #{req.id}")
-          break
-        end
-        certificate = retrieve(req)
-        if certificate != nil
-          return certificate
-        end
-        sleep 10
-      end
-      return nil
+      cert = retrieve_loop(req, timeout)
+      return cert
     end
   end
 end
 
-
+def retrieve_loop(req, timeout)
+  puts "timeout is "+timeout.inspect
+  t = Time.new() + timeout
+  loop do
+    if Time.new() > t
+      LOG.info("Waiting certificate #{req.id}")
+      break
+    end
+    certificate = retrieve(req)
+    if certificate != nil
+      return certificate
+    end
+    sleep 10
+  end
+  return nil
+end
 require 'cloud/cloud'
 require 'tpp/tpp'
 require 'objects/objects'
