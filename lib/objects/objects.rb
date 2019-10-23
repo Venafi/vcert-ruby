@@ -42,7 +42,11 @@ module Vcert
         subject_attrs.push(['O', @organization])
       end
       if @organizational_unit != nil
-        subject_attrs.push(['OU', @organizational_unit])
+        if @organizational_unit.kind_of?(Array)
+          @organizational_unit.each { |ou| subject_attrs.push(['OU', ou]) }
+        else
+          subject_attrs.push(['OU', @organizational_unit])
+        end
       end
       if @country != nil
         subject_attrs.push(['C', @country])
