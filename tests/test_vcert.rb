@@ -49,6 +49,7 @@ class VcertTest < Minitest::Test
     zone_config = conn.zone_configuration(zone)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, zone, timeout: 300)
+    assert (cert.cert != nil )
     LOG.info(("cert is:\n" + cert.cert))
     LOG.info(("pk is:\n" + cert.private_key))
 
@@ -62,9 +63,10 @@ class VcertTest < Minitest::Test
     renew_request.id = request.id
     renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
-    renew_cert = conn.retrieve(renew_request)
+    renew_cert = conn.retrieve_loop(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))
     LOG.info(("renewd cert key is:\n" + renew_private_key))
+    assert (renew_cert.cert != nil )
     renew_certificate_object = OpenSSL::X509::Certificate.new(renew_cert.cert)
     assert !renew_certificate_object.check_private_key(key_object), "Renewed cert signed by same key"
     renew_key_object = OpenSSL::PKey::RSA.new(renew_private_key)

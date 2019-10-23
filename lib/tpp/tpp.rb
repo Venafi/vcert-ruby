@@ -167,8 +167,8 @@ class Vcert::TPPConnection
     organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
     organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
     key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    Vcert::ZoneConfiguration.new country:country, province: state, locality: city, organization: organization,
-                                     organizational_unit: organizational_unit, key_type:Vcert::CertField.new(key_type)
+    Vcert::ZoneConfiguration.new country: country, province: state, locality: city, organization: organization,
+                                 organizational_unit: organizational_unit, key_type: Vcert::CertField.new(key_type)
   end
 
   def renew(request, generate_new_key: true)
@@ -189,19 +189,23 @@ class Vcert::TPPConnection
       csr_pem = "-----BEGIN CERTIFICATE REQUEST-----\n#{csr_base64_data}\n-----END CERTIFICATE REQUEST-----\n"
       parsed_csr = parse_csr_fields(csr_pem)
       renew_request = Vcert::Request.new(
-          common_name: parsed_csr.fetch(:CN,nil),
-          san_dns: parsed_csr.fetch(:DNS,nil),
-          country: parsed_csr.fetch(:C,nil),
-          province: parsed_csr.fetch(:ST,nil),
-          locality: parsed_csr.fetch(:L,nil),
-          organization: parsed_csr.fetch(:O,nil),
-          organizational_unit: parsed_csr.fetch(:OU,nil))
+          common_name: parsed_csr.fetch(:CN, nil),
+          san_dns: parsed_csr.fetch(:DNS, nil),
+          country: parsed_csr.fetch(:C, nil),
+          province: parsed_csr.fetch(:ST, nil),
+          locality: parsed_csr.fetch(:L, nil),
+          organization: parsed_csr.fetch(:O, nil),
+          organizational_unit: parsed_csr.fetch(:OU, nil))
       d.merge!(certificateSigningRequest: renew_request.csr)
     end
     LOG.info("Trying to renew certificate %s" % request.id)
     _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)
     if d.key?('Success')
-      return request.id, request.private_key
+      if generate_new_key
+        return request.id, renew_request.private_key
+      else
+        return request.id, nil
+      end
     else
       raise "Certificate renew error"
     end
