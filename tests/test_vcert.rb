@@ -90,11 +90,11 @@ class VcertTest < Minitest::Test
     cn = random_domain
     conn = tpp_connection
     request = Vcert::Request.new common_name: cn
-    cert = conn.request_and_retrieve request, TPPZONE, timeout: 600
     zone_config = conn.zone_configuration(TPPZONE)
     request.update_from_zone_config(zone_config)
-    assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
-    assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
+    cert = conn.request_and_retrieve request, TPPZONE, timeout: 600
+    LOG.info(("cert is:\n" + cert.cert))
+    LOG.info(("pk is:\n" + cert.private_key))
 
     LOG.info("csr is:\n#{request.csr}")
     #renew
@@ -102,7 +102,7 @@ class VcertTest < Minitest::Test
     renew_request.id = request.id
     renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
-    renew_cert = conn.retrieve(renew_request)
+    renew_cert = conn.retrieve_loop(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))
     LOG.info(("renewd cert key is:\n" + renew_private_key))
   end

@@ -30,9 +30,8 @@ module Vcert
 
     # @param [Request] request
     # @return [Certificate]
-    def retrieve(req, timeout: TIMEOUT)
-      cert = retrieve_loop(req, timeout)
-      return cert
+    def retrieve(request)
+      @conn.retrieve(request)
     end
 
     def revoke(*args)
@@ -61,12 +60,11 @@ module Vcert
     # @return [Certificate]
     def request_and_retrieve(req, zone, timeout: TIMEOUT)
       request zone, req
-      cert = retrieve_loop(req, timeout)
+      cert = retrieve_loop(req, timeout: timeout)
       return cert
     end
 
-    def retrieve_loop(req, timeout)
-      puts "timeout is "+timeout.inspect
+    def retrieve_loop(req, timeout: TIMEOUT)
       t = Time.new() + timeout
       loop do
         if Time.new() > t
