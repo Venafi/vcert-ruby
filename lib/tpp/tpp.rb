@@ -262,7 +262,7 @@ class Vcert::TPPConnection
     return response.code.to_i, data
   end
 
-  def get
+  def get(url)
     if @token == nil || @token[1] < DateTime.now
       auth()
     end
@@ -274,6 +274,7 @@ class Vcert::TPPConnection
     end
     url = uri.path + url
     response = request.get(url, {TOKEN_HEADER_NAME => @token[0]})
+    # TODO: check valid json
     data = JSON.parse(response.body)
     return response.code.to_i, data
   end
@@ -318,13 +319,13 @@ class Vcert::TPPConnection
   def search_by_thumbprint(thumbprint)
     # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-    status, data = post(URL_CERTIFICATE_SEARCH, data = {expression: {operands: [
-        {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
+    status, data = get(URL_CERTIFICATE_SEARCH+"?Thumbprint=#{thumbprint}")
     # TODO: check that data have valid certificate in it
     if status != 200
       raise "Unexpected status code on Venafi Cloud certificate search. Status: #{status}. Message:\n #{data.body.to_s}"
     end
-    return data['certificates'][0]
+    # TODO: check valid data
+    return data['Certificates'][0]['DN']
   end
 end
 
