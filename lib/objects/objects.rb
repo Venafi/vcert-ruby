@@ -54,6 +54,7 @@ module Vcert
         subject_attrs.push(['L', @locality])
       end
 
+      LOG.info("Making request from subject array #{subject_attrs.inspect}")
       subject = OpenSSL::X509::Name.new subject_attrs
       csr = OpenSSL::X509::Request.new
       csr.version = 0

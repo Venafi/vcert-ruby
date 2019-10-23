@@ -9,14 +9,17 @@ TPP_USER = ENV['TPPUSER']
 TPP_PASSWORD = ENV['TPPPASSWORD']
 
 conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
+# conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+zone = CLOUDZONE
+# zone = TPPZONE
 
 request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
-zone_config = conn.zone_configuration(CLOUDZONE)
+zone_config = conn.zone_configuration(zone)
 
 request.update_from_zone_config(zone_config)
 
-certificate = conn.request_and_retrieve(request, CLOUDZONE, 600)
+certificate = conn.request_and_retrieve(request, zone, timeout: 600)
 
 
 puts certificate.cert
