@@ -64,25 +64,27 @@ module Vcert
       cert = retrieve_loop(req, timeout)
       return cert
     end
+
+    def retrieve_loop(req, timeout)
+      puts "timeout is "+timeout.inspect
+      t = Time.new() + timeout
+      loop do
+        if Time.new() > t
+          LOG.info("Waiting certificate #{req.id}")
+          break
+        end
+        certificate = @conn.retrieve(req)
+        if certificate != nil
+          return certificate
+        end
+        sleep 10
+      end
+      return nil
+    end
+
   end
 end
 
-def retrieve_loop(req, timeout)
-  puts "timeout is "+timeout.inspect
-  t = Time.new() + timeout
-  loop do
-    if Time.new() > t
-      LOG.info("Waiting certificate #{req.id}")
-      break
-    end
-    certificate = retrieve(req)
-    if certificate != nil
-      return certificate
-    end
-    sleep 10
-  end
-  return nil
-end
 require 'cloud/cloud'
 require 'tpp/tpp'
 require 'objects/objects'
