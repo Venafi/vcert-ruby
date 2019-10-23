@@ -40,19 +40,15 @@ def random_domain
 end
 
 class VcertTest < Minitest::Test
-  def test_bad_request_cloud
 
-  end
-
-  def test_request_cloud
+  def request_and_renew(conn, zone)
     cn = random_domain
-    conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     LOG.info("Requesting cert with CN #{cn}")
     kt = Vcert::KeyType.new("rsa", 4096)
     request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt, san_dns: ["ext-"+cn])
-    zone_config = conn.zone_configuration(CLOUDZONE)
+    zone_config = conn.zone_configuration(zone)
     request.update_from_zone_config(zone_config)
-    cert = conn.request_and_retrieve(request, CLOUDZONE, timeout: 300)
+    cert = conn.request_and_retrieve(request, zone, timeout: 300)
     LOG.info(("cert is:\n" + cert.cert))
     LOG.info(("pk is:\n" + cert.private_key))
 
@@ -87,26 +83,12 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-    cn = random_domain
-    conn = tpp_connection
-    request = Vcert::Request.new common_name: cn
-    zone_config = conn.zone_configuration(TPPZONE)
-    request.update_from_zone_config(zone_config)
-    cert = conn.request_and_retrieve request, TPPZONE, timeout: 600
-    LOG.info(("cert is:\n" + cert.cert))
-    LOG.info(("pk is:\n" + cert.private_key))
-
-    LOG.info("csr is:\n#{request.csr}")
-    #renew
-    renew_request = Vcert::Request.new
-    renew_request.id = request.id
-    renew_cert_id, renew_private_key = conn.renew(renew_request)
-    renew_request.id = renew_cert_id
-    renew_cert = conn.retrieve_loop(renew_request)
-    LOG.info(("renewd cert is:\n" + renew_cert.cert))
-    LOG.info(("renewd cert key is:\n" + renew_private_key))
+      request_and_renew(tpp_connection, TPPZONE)
   end
 
+  def test_request_cloud
+    request_and_renew(cloud_connection, CLOUDZONE)
+  end
 
   def test_zone_configuration_tpp
     conn = tpp_connection
@@ -123,6 +105,10 @@ end
 
 def tpp_connection
   Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+end
+
+def cloud_connection
+  Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 end
 
 class VcertLocalTest < Minitest::Test
