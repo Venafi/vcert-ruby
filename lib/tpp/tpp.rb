@@ -181,7 +181,6 @@ class Vcert::TPPConnection
     end
     renew_req_data = {"CertificateDN": request.id}
     if generate_new_key
-      #   TODO: find certificaite vaultId
       _, r = post(URL_SECRET_STORE_SEARCH, d = {"Namespace": "config", "Owner": request.id, "VaultType": 512})
       vaultId = r["VaultIDs"][0]
       _, r = post(URL_SECRET_STORE_RETRIEVE, d = {"VaultID": vaultId})
@@ -196,7 +195,7 @@ class Vcert::TPPConnection
           locality: parsed_csr.fetch(:L, nil),
           organization: parsed_csr.fetch(:O, nil),
           organizational_unit: parsed_csr.fetch(:OU, nil))
-      d.merge!(certificateSigningRequest: renew_request.csr)
+      renew_req_data.merge!(PKCS10: renew_request.csr)
     end
     LOG.info("Trying to renew certificate %s" % request.id)
     _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)

@@ -7,8 +7,8 @@ OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 module Vcert
   SUPPORTED_CURVES = ["secp224r1", "prime256v1", "secp521r1"]
   class Request
-    attr_accessor :id
-    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
+    attr_accessor :id, :thumbprint
+    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type
 
     def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
