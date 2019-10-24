@@ -17,7 +17,7 @@ class Vcert::FakeConnection
     root_key = OpenSSL::PKey::RSA.new ROOT_KEY
     cert = OpenSSL::X509::Certificate.new
     cert.version = 2
-    cert.serial = 2
+    cert.serial = (Time.new.to_f() * 100).to_i
     cert.subject = csr.subject
     cert.issuer = root_ca.subject
     cert.not_before = Time.now
