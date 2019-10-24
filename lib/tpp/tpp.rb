@@ -322,7 +322,7 @@ class Vcert::TPPConnection
     status, data = get(URL_CERTIFICATE_SEARCH+"?Thumbprint=#{thumbprint}")
     # TODO: check that data have valid certificate in it
     if status != 200
-      raise "Unexpected status code on Venafi Cloud certificate search. Status: #{status}. Message:\n #{data.body.to_s}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status: #{status}. Message:\n #{data.body.to_s}"
     end
     # TODO: check valid data
     return data['Certificates'][0]['DN']
