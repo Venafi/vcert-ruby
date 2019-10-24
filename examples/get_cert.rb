@@ -34,3 +34,5 @@ renew_request.id = renew_cert_id
 renew_cert = conn.retrieve_loop(renew_request)
 puts "Renewed cert is:\n#{renew_cert.cert}"
 puts "Renew pkey is:\n#{renew_private_key}"
+
+# TODO: add renew by thumbprint
