@@ -8,7 +8,7 @@ TPP_URL = ENV['TPPURL']
 TPP_USER = ENV['TPPUSER']
 TPP_PASSWORD = ENV['TPPPASSWORD']
 
-conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
+conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY, fake:true)
 
 request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
