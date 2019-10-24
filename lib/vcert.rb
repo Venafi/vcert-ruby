@@ -1,6 +1,8 @@
 require 'net/https'
 require 'time'
 
+TIMEOUT = 420
+
 module Vcert
   class VcertError < StandardError ; end
   class AuthenticationError < VcertError; end
@@ -12,7 +14,7 @@ module Vcert
     def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil, fake: false)
       if fake
         @conn = FakeConnection.new
-      elsif cloud_token != nil then
+      elsif cloud_token != nil
         @conn = CloudConnection.new url, cloud_token
       elsif user != nil && password != nil && url != nil then
         @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
@@ -58,15 +60,20 @@ module Vcert
     # @param [String] zone
     # @param [Integer] timeout
     # @return [Certificate]
-    def request_and_retrieve(req, zone, timeout)
+    def request_and_retrieve(req, zone, timeout: TIMEOUT)
       request zone, req
+      cert = retrieve_loop(req, timeout: timeout)
+      return cert
+    end
+
+    def retrieve_loop(req, timeout: TIMEOUT)
       t = Time.new() + timeout
       loop do
         if Time.new() > t
           LOG.info("Waiting certificate #{req.id}")
           break
         end
-        certificate = retrieve(req)
+        certificate = @conn.retrieve(req)
         if certificate != nil
           return certificate
         end
@@ -74,9 +81,9 @@ module Vcert
       end
       return nil
     end
+
   end
 end
-
 
 require 'fake/fake'
 require 'cloud/cloud'

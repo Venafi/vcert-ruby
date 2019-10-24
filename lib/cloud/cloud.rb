@@ -82,7 +82,7 @@ class Vcert::CloudConnection
       parsed_csr = parse_csr_fields(prev_request[:csr])
       renew_request = Vcert::Request.new(
           common_name: parsed_csr[:CN],
-          san_dns: [parsed_csr[:DNS]],
+          san_dns: parsed_csr[:DNS],
           country: parsed_csr[:C],
           province: parsed_csr[:ST],
           locality: parsed_csr[:L],

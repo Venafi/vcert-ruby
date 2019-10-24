@@ -7,8 +7,8 @@ OpenSSL::PKey::EC.send(:alias_method, :private?, :private_key?)
 module Vcert
   SUPPORTED_CURVES = ["secp224r1", "prime256v1", "secp521r1"]
   class Request
-    attr_accessor :id
-    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type, :thumbprint
+    attr_accessor :id, :thumbprint
+    attr_reader :common_name, :country, :province, :locality, :organization, :organizational_unit, :san_dns,:key_type
 
     def initialize(common_name: nil, private_key: nil, key_type: nil,
                    organization: nil, organizational_unit: nil, country: nil, province: nil, locality: nil, san_dns: nil,
@@ -42,7 +42,11 @@ module Vcert
         subject_attrs.push(['O', @organization])
       end
       if @organizational_unit != nil
-        subject_attrs.push(['OU', @organizational_unit])
+        if @organizational_unit.kind_of?(Array)
+          @organizational_unit.each { |ou| subject_attrs.push(['OU', ou]) }
+        else
+          subject_attrs.push(['OU', @organizational_unit])
+        end
       end
       if @country != nil
         subject_attrs.push(['C', @country])
@@ -54,12 +58,16 @@ module Vcert
         subject_attrs.push(['L', @locality])
       end
 
+      LOG.info("Making request from subject array #{subject_attrs.inspect}")
       subject = OpenSSL::X509::Name.new subject_attrs
       csr = OpenSSL::X509::Request.new
       csr.version = 0
       csr.subject = subject
       csr.public_key = @public_key
       if @san_dns != nil
+        unless @san_dns.kind_of?(Array)
+          @san_dns = [@san_dns]
+        end
         #TODO: add check that san_dns is an array
         san_list = @san_dns.map { |domain| "DNS:#{domain}" }
         extensions = [

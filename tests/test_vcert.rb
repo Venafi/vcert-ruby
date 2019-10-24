@@ -10,7 +10,7 @@ TPPURL = ENV['TPPURL']
 TPPUSER = ENV['TPPUSER']
 TPPPASSWORD = ENV['TPPPASSWORD']
 TPPZONE = ENV["TPPZONE"]
-TRUST_BUNDLE = "/tmp/chain.pem"
+TRUST_BUNDLE = ENV["TRUST_BUNDLE"]
 CSR_TEST = "-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -40,19 +40,16 @@ def random_domain
 end
 
 class VcertTest < Minitest::Test
-  def test_bad_request_cloud
 
-  end
-
-  def test_request_cloud
+  def request_and_renew(conn, zone)
     cn = random_domain
-    conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
     LOG.info("Requesting cert with CN #{cn}")
     kt = Vcert::KeyType.new("rsa", 4096)
     request = Vcert::Request.new(common_name: cn, country: "US", key_type: kt, san_dns: ["ext-"+cn])
-    zone_config = conn.zone_configuration(CLOUDZONE)
+    zone_config = conn.zone_configuration(zone)
     request.update_from_zone_config(zone_config)
-    cert = conn.request_and_retrieve(request, CLOUDZONE, 300)
+    cert = conn.request_and_retrieve(request, zone, timeout: 300)
+    assert (cert.cert != nil )
     LOG.info(("cert is:\n" + cert.cert))
     LOG.info(("pk is:\n" + cert.private_key))
 
@@ -66,9 +63,10 @@ class VcertTest < Minitest::Test
     renew_request.id = request.id
     renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
-    renew_cert = conn.retrieve(renew_request)
+    renew_cert = conn.retrieve_loop(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))
     LOG.info(("renewd cert key is:\n" + renew_private_key))
+    assert (renew_cert.cert != nil )
     renew_certificate_object = OpenSSL::X509::Certificate.new(renew_cert.cert)
     assert !renew_certificate_object.check_private_key(key_object), "Renewed cert signed by same key"
     renew_key_object = OpenSSL::PKey::RSA.new(renew_private_key)
@@ -76,24 +74,33 @@ class VcertTest < Minitest::Test
     assert (certificate_object.serial != renew_certificate_object.serial), "Original cert sn and renew sn are equal"
     assert (certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1] == renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1])
 
-    #Search by thumbprint test, not working yet
-    # thumbprint = OpenSSL::Digest::SHA1.new(renew_certificate_object.to_der).to_s
-    # LOG.info("Trying to renew by thumbprint #{thumbprint}")
-    # thumbprint_renew_request = Vcert::Request.new
-    # thumbprint_renew_request.thumbprint = thumbprint
-    # thumbprint_renew_cert_id = conn.renew(thumbprint_renew_request)
-    # thumbprint_renew_cert = conn.retrieve(thumbprint_renew_cert_id)
-    # LOG.info(("thumbprint renewd cert is:\n" + thumbprint_renew_cert.cert))
+    #Search by thumbprint test
+    thumbprint = OpenSSL::Digest::SHA1.new(renew_certificate_object.to_der).to_s
+    LOG.info("Trying to renew by thumbprint #{thumbprint}")
+    thumbprint_renew_request = Vcert::Request.new
+    thumbprint_renew_request.thumbprint = thumbprint
+    thumbprint_renew_cert_id, thumbprint_renew_private_key = conn.renew(thumbprint_renew_request)
+    thumbprint_renew_request.id=thumbprint_renew_cert_id
+    thumbprint_renew_cert = conn.retrieve_loop(thumbprint_renew_request)
+    LOG.info(("thumbprint renewd cert is:\n" + thumbprint_renew_cert.cert))
+    LOG.info(("thumbprint renewd key is:\n" + thumbprint_renew_private_key))
+    assert (thumbprint_renew_cert.cert != nil )
+    thumbprint_renew_certificate_object = OpenSSL::X509::Certificate.new(thumbprint_renew_cert.cert)
+    assert !thumbprint_renew_certificate_object.check_private_key(renew_key_object), "Renewed thumbprint cert signed by same key"
+    thumbprint_renew_key_object = OpenSSL::PKey::RSA.new(thumbprint_renew_private_key)
+    assert thumbprint_renew_certificate_object.check_private_key(thumbprint_renew_key_object), "Renewed cert signed by the wrong key"
+    assert (renew_certificate_object.serial != thumbprint_renew_certificate_object.serial), "Original cert sn and renew sn are equal"
+    assert (thumbprint_renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1] == renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1]), "thunbprin certificate CN si different from original"
+
   end
 
   def test_request_tpp
-    conn = tpp_connection
-    req = Vcert::Request.new common_name: 'test432432423.example.com'
-    cert = conn.request_and_retrieve req, TPPZONE, 600
-    assert_match(/^-----BEGIN CERTIFICATE-----.*/, cert.cert)
-    assert_match(/^-----BEGIN RSA PRIVATE KEY-----.*/, cert.private_key)
+      request_and_renew(tpp_connection, TPPZONE)
   end
 
+  def test_request_cloud
+    request_and_renew(cloud_connection, CLOUDZONE)
+  end
 
   def test_zone_configuration_tpp
     conn = tpp_connection
@@ -110,6 +117,10 @@ end
 
 def tpp_connection
   Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+end
+
+def cloud_connection
+  Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 end
 
 class VcertLocalTest < Minitest::Test
