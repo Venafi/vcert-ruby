@@ -190,7 +190,7 @@ class Vcert::CloudConnection
     request.use_ssl = true
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
-    response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json"})
+    response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json", "Accept" => "application/json"})
     case response.code.to_i
     when 200, 201, 202, 409
       LOG.info(("HTTP status OK"))
@@ -241,13 +241,16 @@ class Vcert::CloudConnection
   def search_by_thumbprint(thumbprint)
     # thumbprint = re.sub(r'[^\dabcdefABCDEF]', "", thumbprint)
     thumbprint = thumbprint.upcase
-    status, data = post(URL_CERTIFICATE_SEARCH, data = {expression: {operands: [
+    status, data = post(URL_CERTIFICATE_SEARCH, data = {"expression": {operands: [
         {field: "fingerprint", operator: "MATCH", value: thumbprint}]}})
     # TODO: check that data have valid certificate in it
     if status != 200
       raise Vcert::ServerUnexpectedBehaviorError, "Status: #{status}. Message: #{data.body.to_s}"
     end
-    return data['certificates'][0]
+    # TODO: check data
+    manageId = data['certificates'][0]['managedCertificateId']
+    LOG.info("Found certificate with manage id #{manageId}")
+    return manageId
   end
 
   def get_cert_status(request)
