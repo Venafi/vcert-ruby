@@ -14,7 +14,7 @@ module Vcert
     def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil, fake: false)
       if fake
         @conn = FakeConnection.new
-      elsif cloud_token != nil then
+      elsif cloud_token != nil
         @conn = CloudConnection.new url, cloud_token
       elsif user != nil && password != nil && url != nil then
         @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
