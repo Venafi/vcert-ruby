@@ -11,18 +11,18 @@ TRUST_BUNDLE = ENV['TRUST_BUNDLE']
 TPPZONE = ENV['TPPZONE']
 
 if CLOUDAPIKEY != nil
+  puts "Using Cloud connection"
   zone = CLOUDZONE
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 elsif TPPURL != nil && TPPPASSWORD != nil && TPPUSER != nil
+  puts "Using Platform connection to #{TPPURL}"
   conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
   zone = TPPZONE
 else
+  puts "Using Fake connection"
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY, fake: true)
   zone = "fake"
 end
-
-#!!!This will show credential with connection parameters, don't use it production
-puts "Using connection #{conn.inspect}"
 
 request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com","ext2-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
 
