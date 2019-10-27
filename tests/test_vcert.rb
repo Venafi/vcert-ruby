@@ -102,16 +102,36 @@ class VcertTest < Minitest::Test
     request_and_renew(cloud_connection, CLOUDZONE)
   end
 
+  def test_request_fake
+    request_and_renew(Vcert::Connection.new(fake:true), "fake")
+  end
+
   def test_zone_configuration_tpp
     conn = tpp_connection
-
     zone = conn.zone_configuration TPPZONE
+    assert_equal(zone.country.value, "US")
+    assert_equal(zone.province.value, "Utah")
+    assert_equal(zone.locality.value, "Salt Lake")
+    assert_equal(zone.organization.value, "Venafi Inc.")
+    assert_equal(zone.organizational_unit.value, ["Integrations"])
+    assert_equal(zone.key_type.value.type, "rsa")
+    assert_equal(zone.key_type.value.option, 2048)
   end
 
   def test_read_policy_tpp
     conn = tpp_connection
 
     policy = conn.policy TPPZONE
+    assert_equal(policy.instance_variable_get("@policy_id"), '\VED\Policy\devops\\\\vcert')
+    assert_equal(policy.instance_variable_get("@name"), 'devops\\\\vcert')
+    assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_st_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_l_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_o_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_ou_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@san_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@key_types").length, 7)
   end
 end
 

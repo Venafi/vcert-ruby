@@ -64,14 +64,14 @@ class Vcert::TPPConnection
 
     policy = response["Policy"]
     s = policy["Subject"]
-    if policy["WhitelistedDomains"]
+    if policy["WhitelistedDomains"].empty?
+      subjectCNRegex = [ALL_ALLOWED_REGEX]
+    else
       if policy["WildcardsAllowed"]
         subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
       else
         subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
       end
-    else
-      subjectCNRegex = [ALL_ALLOWED_REGEX]
     end
     if s["OrganizationalUnit"]["Locked"]
       subjectOURegexes = escape(s["OrganizationalUnit"]["Values"])
