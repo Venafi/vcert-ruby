@@ -1,9 +1,11 @@
 require 'openssl'
 require 'base64'
 
+
+
 class Vcert::FakeConnection
   def initialize()
-
+    @cert_cache = {}
   end
 
   def request(zone_tag, request)
@@ -25,8 +27,10 @@ class Vcert::FakeConnection
     cert.not_after = cert.not_before + 1 * 365 * 24 * 60 * 60
     # todo: add extensions
     cert.sign(root_key, OpenSSL::Digest::SHA256.new)
-    Vcert::Certificate.new cert:cert.to_pem, chain: ROOT_CA, private_key: request.private_key
-
+    c = Vcert::Certificate.new cert:cert.to_pem, chain: ROOT_CA, private_key: request.private_key
+    thumbprint = OpenSSL::Digest::SHA1.new(cert.to_der).to_s
+    @cert_cache[thumbprint] = cert
+    c
   end
 
   def policy(zone_tag)
@@ -48,7 +52,20 @@ class Vcert::FakeConnection
         key_type: Vcert::CertField.new(Vcert::KeyType.new("rsa", 2048), locked: true),
         )
   end
+
   def renew(request, generate_new_key: true)
+    if request.thumbprint
+      if generate_new_key
+        new_key = OpenSSL::PKey::RSA.new 2048
+        csr = OpenSSL::X509::Request.new
+        csr.subject = @cert_cache[request.thumbprint].subject
+        csr.public_key =  new_key.public_key
+        csr.sign new_key, OpenSSL::Digest::SHA256.new
+        return Base64.encode64(csr.to_pem), new_key.to_pem
+      else
+        raise Vcert::VcertError, "can not be implemented"
+      end
+    end
     unless generate_new_key
       return request.id, request.private_key
     end
