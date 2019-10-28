@@ -2,6 +2,7 @@ require "test/unit/assertions"
 require 'minitest/autorun'
 require 'vcert'
 require 'openssl'
+require 'json'
 
 CLOUDAPIKEY = ENV['CLOUDAPIKEY']
 CLOUDURL = ENV['CLOUDURL']
@@ -222,6 +223,22 @@ class VcertLocalTest < Minitest::Test
     #todo: add more tests
   end
 
+  def test_zone_configuation_parser_tpp
+    conn = tpp_connection().instance_variable_get("@conn")
+    data = JSON.parse '{"Error":null,"Policy":{"CertificateAuthority":{"Locked":false,"Value":"\\VED\\Policy\\devops\\msca_template"},"CsrGeneration":{"Locked":false,"Value":"UserProvided"},"KeyGeneration":{"Locked":false,"Value":"Central"},"KeyPair":{"KeyAlgorithm":{"Locked":false,"Value":"RSA"},"KeySize":{"Locked":false,"Value":2048}},"ManagementType":{"Locked":false,"Value":"Enrollment"},"PrivateKeyReuseAllowed":true,"SubjAltNameDnsAllowed":true,"SubjAltNameEmailAllowed":true,"SubjAltNameIpAllowed":true,"SubjAltNameUpnAllowed":true,"SubjAltNameUriAllowed":true,"Subject":{"City":{"Locked":false,"Value":"Salt Lake"},"Country":{"Locked":false,"Value":"US"},"Organization":{"Locked":false,"Value":"Venafi Inc."},"OrganizationalUnit":{"Locked":false,"Values":["Integrations"]},"State":{"Locked":false,"Value":"Utah"}},"UniqueSubjectEnforced":false,"WhitelistedDomains":[],"WildcardsAllowed":true}}'
+    zone = conn.send(:parse_zone_configuration, data)
+    assert_equal(zone.key_type.value.type, "rsa")
+    assert_equal(zone.key_type.value.option, 2048)
+    # todo: add more tests
+  end
+
+  def test_policy_parser_tpp
+    conn = tpp_connection().instance_variable_get("@conn")
+    data = JSON.parse '{"Error":null,"Policy":{"CertificateAuthority":{"Locked":false,"Value":"\\VED\\Policy\\devops\\msca_template"},"CsrGeneration":{"Locked":false,"Value":"UserProvided"},"KeyGeneration":{"Locked":false,"Value":"Central"},"KeyPair":{"KeyAlgorithm":{"Locked":false,"Value":"RSA"},"KeySize":{"Locked":false,"Value":2048}},"ManagementType":{"Locked":false,"Value":"Enrollment"},"PrivateKeyReuseAllowed":true,"SubjAltNameDnsAllowed":true,"SubjAltNameEmailAllowed":true,"SubjAltNameIpAllowed":true,"SubjAltNameUpnAllowed":true,"SubjAltNameUriAllowed":true,"Subject":{"City":{"Locked":false,"Value":"Salt Lake"},"Country":{"Locked":false,"Value":"US"},"Organization":{"Locked":false,"Value":"Venafi Inc."},"OrganizationalUnit":{"Locked":false,"Values":["Integrations"]},"State":{"Locked":false,"Value":"Utah"}},"UniqueSubjectEnforced":false,"WhitelistedDomains":[],"WildcardsAllowed":true}}'
+    policy = conn.send(:parse_policy_response, data, "TestZone")
+    assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*"])
+    #todo add more tests
+  end
 end
 
 def new_policy_test_wrapper(policy_id: nil, name: "", system_generated: false, creation_date: nil,

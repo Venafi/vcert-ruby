@@ -43,132 +43,15 @@ class Vcert::TPPConnection
     if code != 200
       raise Vcert::ServerUnexpectedBehaviorError, "Status  #{code}"
     end
-
-    def addStartEnd(s)
-      unless s.index("^") == 0
-        s = "^" + s
-      end
-      unless s.end_with?("$")
-        s = s + "$"
-      end
-      s
-    end
-
-    def escape(value)
-      if value.kind_of? Array
-        return value.map { |v| addStartEnd(Regexp.escape(v)) }
-      else
-        return addStartEnd(regexp.QuoteMeta(value))
-      end
-    end
-
-    policy = response["Policy"]
-    s = policy["Subject"]
-    if policy["WhitelistedDomains"].empty?
-      subjectCNRegex = [ALL_ALLOWED_REGEX]
-    else
-      if policy["WildcardsAllowed"]
-        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
-      else
-        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
-      end
-    end
-    if s["OrganizationalUnit"]["Locked"]
-      subjectOURegexes = escape(s["OrganizationalUnit"]["Values"])
-    else
-      subjectOURegexes = [ALL_ALLOWED_REGEX]
-    end
-    if s["Organization"]["Locked"]
-      subjectORegexes = [escape(s["Organization"]["Value"])]
-    else
-      subjectORegexes = [ALL_ALLOWED_REGEX]
-    end
-    if s["City"]["Locked"]
-      subjectLRegexes = [escape(s["City"]["Value"])]
-    else
-      subjectLRegexes = [ALL_ALLOWED_REGEX]
-    end
-    if s["State"]["Locked"]
-      subjectSTRegexes = [escape(s["State"]["Value"])]
-    else
-      subjectSTRegexes = [ALL_ALLOWED_REGEX]
-    end
-    if s["Country"]["Locked"]
-      subjectCRegexes = [escape(s["Country"]["Value"])]
-    else
-      subjectCRegexes = [ALL_ALLOWED_REGEX]
-    end
-    if policy["SubjAltNameDnsAllowed"]
-      if policy["WhitelistedDomains"].length == 0
-        dnsSanRegExs = [ALL_ALLOWED_REGEX]
-      else
-        dnsSanRegExs = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
-      end
-    else
-      dnsSanRegExs = []
-    end
-    if policy["SubjAltNameIpAllowed"]
-      ipSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
-    else
-      ipSanRegExs = []
-    end
-    if policy["SubjAltNameEmailAllowed"]
-      emailSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
-    else
-      emailSanRegExs = []
-    end
-    if policy["SubjAltNameUriAllowed"]
-      uriSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
-    else
-      uriSanRegExs = []
-    end
-
-    if policy["SubjAltNameUpnAllowed"]
-      upnSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
-    else
-      upnSanRegExs = []
-    end
-    unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
-      key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
-    else
-      if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
-        if policy["KeyPair"]["KeySize"]["Locked"]
-          key_types = [Vcert::KeyType.new("rsa", policy["KeyPair"]["KeySize"]["Value"])]
-        else
-          key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) }
-        end
-      elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
-        if policy["KeyPair"]["EllipticCurve"]["Locked"]
-          curve = {"p224" => "secp224r1", "p256" => "prime256v1", "p521" => "secp521r1"}[policy["KeyPair"]["EllipticCurve"]["Value"].downcase]
-          key_types = [Vcert::KeyType.new("ecdsa", curve)]
-        else
-          key_types = Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
-        end
-      end
-    end
-
-    Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, system_generated: false, creation_date: nil,
-                      subject_cn_regexes: subjectCNRegex, subject_o_regexes: subjectORegexes,
-                      subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
-                      subject_l_regexes: subjectLRegexes, subject_c_regexes: subjectCRegexes, san_regexes: dnsSanRegExs,
-                      key_types: key_types)
+    parse_policy_response response, zone_tag
   end
-
 
   def zone_configuration(zone_tag)
     code, response = post URL_ZONE_CONFIG, {:PolicyDN => policy_dn(zone_tag)}
     if code != 200
       raise Vcert::ServerUnexpectedBehaviorError, "Status  #{code}"
     end
-    s = response["Policy"]["Subject"]
-    country = Vcert::CertField.new s["Country"]["Value"], locked: s["Country"]["Locked"]
-    state = Vcert::CertField.new s["State"]["Value"], locked: s["State"]["Locked"]
-    city = Vcert::CertField.new s["City"]["Value"], locked: s["City"]["Locked"]
-    organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
-    organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
-    key_type = Vcert::KeyType.new response["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], response["Policy"]["KeyPair"]["KeySize"]["Value"]
-    Vcert::ZoneConfiguration.new country: country, province: state, locality: city, organization: organization,
-                                 organizational_unit: organizational_unit, key_type: Vcert::CertField.new(key_type)
+    parse_zone_configuration response
   end
 
   def renew(request, generate_new_key: true)
@@ -326,6 +209,129 @@ class Vcert::TPPConnection
     end
     # TODO: check valid data
     return data['Certificates'][0]['DN']
+  end
+
+  def parse_zone_configuration(data)
+    s = data["Policy"]["Subject"]
+    country = Vcert::CertField.new s["Country"]["Value"], locked: s["Country"]["Locked"]
+    state = Vcert::CertField.new s["State"]["Value"], locked: s["State"]["Locked"]
+    city = Vcert::CertField.new s["City"]["Value"], locked: s["City"]["Locked"]
+    organization = Vcert::CertField.new s["Organization"]["Value"], locked: s["Organization"]["Locked"]
+    organizational_unit = Vcert::CertField.new s["OrganizationalUnit"]["Values"], locked: s["OrganizationalUnit"]["Locked"]
+    key_type = Vcert::KeyType.new data["Policy"]["KeyPair"]["KeyAlgorithm"]["Value"], data["Policy"]["KeyPair"]["KeySize"]["Value"]
+    Vcert::ZoneConfiguration.new country: country, province: state, locality: city, organization: organization,
+                                 organizational_unit: organizational_unit, key_type: Vcert::CertField.new(key_type)
+  end
+
+  def parse_policy_response(response, zone_tag)
+    def addStartEnd(s)
+      unless s.index("^") == 0
+        s = "^" + s
+      end
+      unless s.end_with?("$")
+        s = s + "$"
+      end
+      s
+    end
+
+    def escape(value)
+      if value.kind_of? Array
+        return value.map { |v| addStartEnd(Regexp.escape(v)) }
+      else
+        return addStartEnd(regexp.QuoteMeta(value))
+      end
+    end
+
+    policy = response["Policy"]
+    s = policy["Subject"]
+    if policy["WhitelistedDomains"].empty?
+      subjectCNRegex = [ALL_ALLOWED_REGEX]
+    else
+      if policy["WildcardsAllowed"]
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
+      else
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+      end
+    end
+    if s["OrganizationalUnit"]["Locked"]
+      subjectOURegexes = escape(s["OrganizationalUnit"]["Values"])
+    else
+      subjectOURegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["Organization"]["Locked"]
+      subjectORegexes = [escape(s["Organization"]["Value"])]
+    else
+      subjectORegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["City"]["Locked"]
+      subjectLRegexes = [escape(s["City"]["Value"])]
+    else
+      subjectLRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["State"]["Locked"]
+      subjectSTRegexes = [escape(s["State"]["Value"])]
+    else
+      subjectSTRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if s["Country"]["Locked"]
+      subjectCRegexes = [escape(s["Country"]["Value"])]
+    else
+      subjectCRegexes = [ALL_ALLOWED_REGEX]
+    end
+    if policy["SubjAltNameDnsAllowed"]
+      if policy["WhitelistedDomains"].length == 0
+        dnsSanRegExs = [ALL_ALLOWED_REGEX]
+      else
+        dnsSanRegExs = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+      end
+    else
+      dnsSanRegExs = []
+    end
+    if policy["SubjAltNameIpAllowed"]
+      ipSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
+    else
+      ipSanRegExs = []
+    end
+    if policy["SubjAltNameEmailAllowed"]
+      emailSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
+    else
+      emailSanRegExs = []
+    end
+    if policy["SubjAltNameUriAllowed"]
+      uriSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
+    else
+      uriSanRegExs = []
+    end
+
+    if policy["SubjAltNameUpnAllowed"]
+      upnSanRegExs = [ALL_ALLOWED_REGEX] # todo: support
+    else
+      upnSanRegExs = []
+    end
+    unless policy["KeyPair"]["KeyAlgorithm"]["Locked"]
+      key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) } + Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
+    else
+      if policy["KeyPair"]["KeyAlgorithm"]["Value"] == "RSA"
+        if policy["KeyPair"]["KeySize"]["Locked"]
+          key_types = [Vcert::KeyType.new("rsa", policy["KeyPair"]["KeySize"]["Value"])]
+        else
+          key_types = [1024, 2048, 4096, 8192].map { |s| Vcert::KeyType.new("rsa", s) }
+        end
+      elsif policy["KeyPair"]["KeyAlgorithm"]["Value"] == "EC"
+        if policy["KeyPair"]["EllipticCurve"]["Locked"]
+          curve = {"p224" => "secp224r1", "p256" => "prime256v1", "p521" => "secp521r1"}[policy["KeyPair"]["EllipticCurve"]["Value"].downcase]
+          key_types = [Vcert::KeyType.new("ecdsa", curve)]
+        else
+          key_types = Vcert::SUPPORTED_CURVES.map { |c| Vcert::KeyType.new("ecdsa", c) }
+        end
+      end
+    end
+
+    Vcert::Policy.new(policy_id: policy_dn(zone_tag), name: zone_tag, system_generated: false, creation_date: nil,
+                      subject_cn_regexes: subjectCNRegex, subject_o_regexes: subjectORegexes,
+                      subject_ou_regexes: subjectOURegexes, subject_st_regexes: subjectSTRegexes,
+                      subject_l_regexes: subjectLRegexes, subject_c_regexes: subjectCRegexes, san_regexes: dnsSanRegExs,
+                      key_types: key_types)
   end
 end
 
