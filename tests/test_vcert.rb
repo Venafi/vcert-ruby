@@ -212,15 +212,28 @@ class VcertLocalTest < Minitest::Test
     p = new_policy_test_wrapper
     assert_nil(p.check_request(r))
     p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"])
-    assert_raises do
+    assert_raises Vcert::ValidationError do
       p.check_request(r)
     end
     p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"], key_types: [Vcert::KeyType.new("rsa", 2048), Vcert::KeyType.new("ecdsa", "secp521r1")])
     r = Vcert::Request.new common_name: "test.venafi.com", key_type: Vcert::KeyType.new("ecdsa", "prime256v1")
-    assert_raises do
+    assert_raises Vcert::ValidationError do
       p.check_request(r)
     end
     #todo: add more tests
+
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.example.com"], key_types: [Vcert::KeyType.new("rsa", 2048), Vcert::KeyType.new("ecdsa", "secp521r1")])
+    r = Vcert::Request.new csr: CSR_TEST
+    p.check_request r
+
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.venafi.com"], key_types: [Vcert::KeyType.new("rsa", 2048), Vcert::KeyType.new("ecdsa", "secp521r1")])
+    assert_raises Vcert::ValidationError do
+      p.check_request(r)
+    end
+    p = new_policy_test_wrapper(subject_cn_regexes: ["test.example.com"], key_types: [Vcert::KeyType.new("ecdsa", "secp521r1")])
+    assert_raises Vcert::ValidationError do
+      p.check_request(r)
+    end
   end
 
   def test_zone_configuation_parser_tpp

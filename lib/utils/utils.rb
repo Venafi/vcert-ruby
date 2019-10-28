@@ -82,6 +82,17 @@ def parse_csr_fields(csr)
       end
     end
   end
+
+  if csr_obj.public_key.instance_of? OpenSSL::PKey::RSA
+    result[:key_type] = Vcert::KeyType.new "rsa", csr_obj.public_key.n.num_bits
+  elsif csr_obj.public_key.instance_of? OpenSSL::PKey::EC
+    # todo: implement
+    raise "not implemented"
+  else
+    raise Vcert::VcertError
+  end
+
+
   LOG.info("Parsed CSR fields:\n #{result.inspect}")
   return result
 end

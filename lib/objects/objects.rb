@@ -185,38 +185,72 @@ module Vcert
 
     # @param [Request] request
     def simple_check_request(request)
-      unless component_is_valid?(request.common_name, @subject_cn_regexes)
-        raise ValidationError, "Common name #{request.common_name} doesnt match #{@subject_cn_regexes}"
+      if request.csr?
+        csr = parse_csr_fields(request.csr)
+        unless component_is_valid?(csr[:CN], @subject_cn_regexes)
+          raise ValidationError, "Common name #{csr[:CN]} doesnt match #{@subject_cn_regexes}"
+        end
+        unless component_is_valid?(request.san_dns, @san_regexes, optional: true)
+          raise ValidationError, "SANs #{csr[:DNS]} doesnt match #{ @san_regexes }"
+        end
+      else
+        unless component_is_valid?(request.common_name, @subject_cn_regexes)
+          raise ValidationError, "Common name #{request.common_name} doesnt match #{@subject_cn_regexes}"
+        end
+        unless component_is_valid?(request.san_dns, @san_regexes, optional: true)
+          raise ValidationError, "SANs #{request.san_dns} doesnt match #{ @san_regexes }"
+        end
       end
-      unless component_is_valid?(request.san_dns, @san_regexes, optional: true)
-        raise ValidationError, "SANs #{request.san_dns} doesnt match #{ @san_regexes }"
-      end
-
     end
 
     # @param [Request] request
     def check_request(request)
       simple_check_request(request)
-      # subject
-      unless component_is_valid?(request.country, @subject_c_regexes)
-        raise ValidationError, "Country #{request.country} doesnt match #{@subject_c_regexes}"
+      if request.csr?
+        csr = parse_csr_fields(request.csr)
+        unless component_is_valid?(csr[:C], @subject_c_regexes)
+          raise ValidationError, "Country #{csr[:C]} doesnt match #{@subject_c_regexes}"
+        end
+        unless component_is_valid?(csr[:ST], @subject_st_regexes)
+          raise ValidationError, "Province #{csr[:ST]} doesnt match #{@subject_st_regexes}"
+        end
+        unless component_is_valid?(csr[:L], @subject_l_regexes)
+          raise ValidationError, "Locality #{csr[:L]} doesnt match #{@subject_l_regexes}"
+        end
+        unless component_is_valid?(csr[:O], @subject_o_regexes)
+          raise ValidationError, "Organization #{csr[:O]} doesnt match #{@subject_o_regexes}"
+        end
+        unless component_is_valid?(csr[:OU], @subject_ou_regexes)
+          raise ValidationError, "Organizational unit #{csr[:OU]} doesnt match #{@subject_ou_regexes}"
+        end
+        #todo: add uri, upn, ip, email
+        unless is_key_type_is_valid?(csr[:key_type], @key_types)
+          raise ValidationError, "Key Type #{csr[:key_type]} doesnt match allowed #{@key_types}"
+        end
+      else
+        # subject
+        unless component_is_valid?(request.country, @subject_c_regexes)
+          raise ValidationError, "Country #{request.country} doesnt match #{@subject_c_regexes}"
+        end
+        unless component_is_valid?(request.province, @subject_st_regexes)
+          raise ValidationError, "Province #{request.province} doesnt match #{@subject_st_regexes}"
+        end
+        unless component_is_valid?(request.locality, @subject_l_regexes)
+          raise ValidationError, "Locality #{request.locality} doesnt match #{@subject_l_regexes}"
+        end
+        unless component_is_valid?(request.organization, @subject_o_regexes)
+          raise ValidationError, "Organization #{request.organization} doesnt match #{@subject_o_regexes}"
+        end
+        unless component_is_valid?(request.organizational_unit, @subject_ou_regexes)
+          raise ValidationError, "Organizational unit #{request.organizational_unit} doesnt match #{@subject_ou_regexes}"
+        end
+        #todo: add uri, upn, ip, email
+        unless is_key_type_is_valid?(request.key_type, @key_types)
+          raise ValidationError, "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
+        end
       end
-      unless component_is_valid?(request.province, @subject_st_regexes)
-        raise ValidationError, "Province #{request.province} doesnt match #{@subject_st_regexes}"
-      end
-      unless component_is_valid?(request.locality, @subject_l_regexes)
-        raise ValidationError, "Locality #{request.locality} doesnt match #{@subject_l_regexes}"
-      end
-      unless component_is_valid?(request.organization, @subject_o_regexes)
-        raise ValidationError, "Organization #{request.organization} doesnt match #{@subject_o_regexes}"
-      end
-      unless component_is_valid?(request.organizational_unit, @subject_ou_regexes)
-        raise ValidationError, "Organizational unit #{request.organizational_unit} doesnt match #{@subject_ou_regexes}"
-      end
-      #todo: add uri, upn, ip, email
-      unless is_key_type_is_valid?(request.key_type, @key_types)
-        raise ValidationError, "Key Type #{request.key_type} doesnt match allowed #{@key_types}"
-      end
+
+
       # todo: (!important!) parse csr if it alredy generated (!important!)
     end
 
