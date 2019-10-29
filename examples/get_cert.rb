@@ -1,5 +1,6 @@
 require 'vcert'
 
+#LOG.level = Logger::ERROR
 
 CLOUDAPIKEY = ENV['CLOUDAPIKEY']
 CLOUDURL = ENV['CLOUDURL']
@@ -13,45 +14,51 @@ TPPZONE_RESTRICTED = ENV['TPPZONE_RESTRICTED']
 CLOUDZONE_RESTRICTED = ENV['CLOUDZONE_RESTRICTED']
 
 if CLOUDAPIKEY != nil
-  puts "Using Cloud connection"
+  puts "Using Venafi Cloud connection"
   zone = CLOUDZONE
   zone_restricted  = CLOUDZONE_RESTRICTED
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 elsif TPPURL != nil && TPPPASSWORD != nil && TPPUSER != nil
-  puts "Using Platform connection to #{TPPURL}"
+  puts "Using Venafi Platform connection to #{TPPURL}"
   conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
   zone = TPPZONE
   zone_restricted = TPPZONE_RESTRICTED
 else
-  puts "Using Fake connection"
+  puts "Using Dev Mode connection"
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY, fake: true)
   zone = "fake"
   zone_restricted = "fake"
 end
 
-request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com","ext2-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
+# you can request a certificate by specifying attributes or by providing a csr
+request = Vcert::Request.new common_name: "test.example.com", \
+  san_dns: ["ext-test.example.com","ext2-test.example.com"], \
+  organization: "Venafi", organizational_unit: "DevOps", \
+  locality: "Salt Lake City", province: "Utah", country: "US"
 
 # zone configuration contains default and strictly set values for request
 zone_config = conn.zone_configuration(zone)
 
-# you can update request with values from configuration
+# you can replace values in request with values from configuration
 request.update_from_zone_config(zone_config)
 
 certificate = conn.request_and_retrieve(request, zone, timeout: 600)
 
-puts "cert is:\n#{certificate.cert}"
-puts "chain is:\n#{certificate.chain}"
-puts "pkey is:\n#{request.private_key}"
+puts "Private Key is:\n#{request.private_key}"
+puts "Certificate is:\n#{certificate.cert}"
+puts "Chain is:\n#{certificate.chain.join("")}"
 
+# renew the previous certificate by providing its ID
+puts "Trying to renew by ID #{request.id}"
 renew_request = Vcert::Request.new
 renew_request.id = request.id
 renew_cert_id, renew_private_key = conn.renew(renew_request)
 renew_request.id = renew_cert_id
 renew_cert = conn.retrieve_loop(renew_request)
-puts "Renewed cert is:\n#{renew_cert.cert}"
-puts "Renewed pkey is:\n#{renew_private_key}"
+puts "New private key is:\n#{renew_private_key}"
+puts "Renewed certificate is:\n#{renew_cert.cert}"
 
-#Search by thumbprint
+# renew the previous certificate by searching for its SHA1 thumbprint
 require "openssl"
 renew_certificate_object = OpenSSL::X509::Certificate.new(renew_cert.cert)
 thumbprint = OpenSSL::Digest::SHA1.new(renew_certificate_object.to_der).to_s
@@ -61,10 +68,10 @@ thumbprint_renew_request.thumbprint = thumbprint
 thumbprint_renew_cert_id, thumbprint_renew_private_key = conn.renew(thumbprint_renew_request)
 thumbprint_renew_request.id=thumbprint_renew_cert_id
 thumbprint_renew_cert = conn.retrieve_loop(thumbprint_renew_request)
-puts "thumbprint renewd cert is:\n" + thumbprint_renew_cert.cert
-puts "thumbprint renewd key is:\n" + thumbprint_renew_private_key
+puts "New private key is:\n" + thumbprint_renew_private_key
+puts "Renewed certificate is:\n" + thumbprint_renew_cert.cert
 
-#validating request
+# verifying certificate requests comply with policy
 policy = conn.policy(zone_restricted)
 
 request = Vcert::Request.new common_name: "test.example.com"

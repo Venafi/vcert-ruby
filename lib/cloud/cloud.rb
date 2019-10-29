@@ -11,19 +11,19 @@ class Vcert::CloudConnection
   def request(zone_tag, request)
     zone_id = get_zoneId_by_tag(zone_tag)
     _, data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
-    LOG.info("Cert response:")
-    LOG.info(JSON.pretty_generate(data))
+    LOG.debug("Raw response to certificate request:")
+    LOG.debug(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
     request
   end
 
   def retrieve(request)
-    LOG.info(("Getting certificate status for id %s" % request.id))
+    LOG.info(("Getting certificate status for ID %s" % request.id))
     status, data = get(URL_CERTIFICATE_STATUS % request.id)
     if [200, 409].include? status
       case data['status']
       when CERT_STATUS_PENDING, CERT_STATUS_REQUESTED
-        LOG.info(("Certificate status is %s." % data['status']))
+        LOG.info(("Certificate status is: %s" % data['status']))
         return nil
       when CERT_STATUS_FAILED
         raise Vcert::ServerUnexpectedBehaviorError, "Certificate issue status is FAILED"
@@ -36,7 +36,7 @@ class Vcert::CloudConnection
           end
           return cert
         else
-          LOG.error("Cant issue certificate: #{full_chain}")
+          LOG.error("Can't issue certificate: #{full_chain}")
           raise Vcert::ServerUnexpectedBehaviorError, "Status #{status}"
         end
       else
@@ -48,7 +48,7 @@ class Vcert::CloudConnection
   def renew(request, generate_new_key: true)
     puts("Trying to renew certificate")
     if request.id == nil && request.thumbprint == nil
-      raise Vcert::ClientBadDataError, "request id or certificate thumbprint must be specified for renewing certificate"
+      raise Vcert::ClientBadDataError, "Either request ID or certificate thumbprint is required to renew the certificate"
     end
     if request.thumbprint != nil
       manage_id = search_by_thumbprint(request.thumbprint)
@@ -59,7 +59,7 @@ class Vcert::CloudConnection
       zone = prev_request[:zoneId]
     end
     if manage_id == nil
-      raise Vcert::VcertError, "Can`t find manage_id"
+      raise Vcert::VcertError, "Can't find the existing certificate"
     end
 
     status, data = get(URL_MANAGED_CERTIFICATE_BY_ID % manage_id)
@@ -102,7 +102,7 @@ class Vcert::CloudConnection
       end
 
     else
-      raise Vcert::ServerUnexpectedBehaviorError, "status: #{status} message: #{data}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Status: #{status} Message: #{data}"
     end
 
   end
@@ -133,7 +133,7 @@ class Vcert::CloudConnection
     end
     status, data = get(URL_TEMPLATE_BY_ID % policy_id)
     if status != 200
-      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status during geting policy: %s for policy %s" % status, policy_id
+      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting policy: %s for policy %s" % status, policy_id
     end
     parse_policy_responce_to_object(data)
   end
@@ -176,19 +176,19 @@ class Vcert::CloudConnection
     when 403
       raise Vcert::AuthenticationError
     else
-      raise Vcert::ServerUnexpectedBehaviorError, "unexpected code #{response.code} for url #{url}. Message: #{response.body}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Unexpected code #{response.code} for URL #{url}. Message: #{response.body}"
     end
     case response.header['content-type']
     when "application/json"
       begin
         data = JSON.parse(response.body)
       rescue JSON::ParserError
-        raise Vcert::ServerUnexpectedBehaviorError, "invalid json"
+        raise Vcert::ServerUnexpectedBehaviorError, "Invalid JSON"
       end
     when "text/plain"
       data = response.body
     else
-      raise Vcert::ServerUnexpectedBehaviorError, "unexpected content-type #{response.header['content-type']}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Unexpected content-type #{response.header['content-type']}"
     end
     # rescue *ALL_NET_HTTP_ERRORS
     return response.code.to_i, data
@@ -208,7 +208,7 @@ class Vcert::CloudConnection
     when 403
       raise Vcert::AuthenticationError
     else
-      raise Vcert::ServerUnexpectedBehaviorError, "unexpected code #{response.code} for url #{url}. Message: #{response.body}"
+      raise Vcert::ServerUnexpectedBehaviorError, "Unexpected code #{response.code} for URL #{url}. Message: #{response.body}"
     end
     data = JSON.parse(response.body)
     return response.code.to_i, data
@@ -251,7 +251,7 @@ class Vcert::CloudConnection
     end
     # TODO: check data
     manageId = data['certificates'][0]['managedCertificateId']
-    LOG.info("Found certificate with manage id #{manageId}")
+    LOG.info("Found existing certificate with ID #{manageId}")
     return manageId
   end
 

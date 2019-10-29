@@ -56,7 +56,7 @@ class Vcert::TPPConnection
 
   def renew(request, generate_new_key: true)
     if request.id == nil && request.thumbprint == nil
-      raise("request id or certificate thumbprint must be specified for renewing certificate")
+      raise("Either request ID or certificate thumbprint is required to renew the certificate")
     end
 
     if request.thumbprint != nil
@@ -164,7 +164,7 @@ class Vcert::TPPConnection
 
   def policy_dn(zone)
     if zone == nil || zone == ''
-      raise Vcert::ClientBadDataError, "Empty zone"
+      raise Vcert::ClientBadDataError, "Zone should not be empty"
     end
     if zone =~ /^\\\\VED\\\\Poplicy/
       return zone
@@ -189,7 +189,7 @@ class Vcert::TPPConnection
       url = url + 'vedsdk/'
     end
     unless url =~ /^https:\/\/[a-z\d]+[-a-z\d.]+[a-z\d][:\d]*\/vedsdk\/$/
-      raise Vcert::ClientBadDataError, "bad TPP url"
+      raise Vcert::ClientBadDataError, "Invalid URL for TPP"
     end
     url
   end
