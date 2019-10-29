@@ -10,19 +10,23 @@ TPPPASSWORD = ENV['TPPPASSWORD']
 TRUST_BUNDLE = ENV['TRUST_BUNDLE']
 TPPZONE = ENV['TPPZONE']
 TPPZONE_RESTRICTED = ENV['TPPZONE_RESTRICTED']
+CLOUDZONE_RESTRICTED = ENV['CLOUDZONE_RESTRICTED']
 
 if CLOUDAPIKEY != nil
   puts "Using Cloud connection"
   zone = CLOUDZONE
+  zone_restricted  = CLOUDZONE_RESTRICTED
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY)
 elsif TPPURL != nil && TPPPASSWORD != nil && TPPUSER != nil
   puts "Using Platform connection to #{TPPURL}"
   conn = Vcert::Connection.new url: TPPURL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
   zone = TPPZONE
+  zone_restricted = TPPZONE_RESTRICTED
 else
   puts "Using Fake connection"
   conn = Vcert::Connection.new(url: CLOUDURL, cloud_token: CLOUDAPIKEY, fake: true)
   zone = "fake"
+  zone_restricted = "fake"
 end
 
 request = Vcert::Request.new common_name: "test.example.com", san_dns: ["ext-test.example.com","ext2-test.example.com"], country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi"
@@ -61,7 +65,7 @@ puts "thumbprint renewd cert is:\n" + thumbprint_renew_cert.cert
 puts "thumbprint renewd key is:\n" + thumbprint_renew_private_key
 
 #validating request
-policy = conn.policy(TPPZONE_RESTRICTED)
+policy = conn.policy(zone_restricted)
 
 request = Vcert::Request.new common_name: "test.example.com"
 begin
@@ -93,4 +97,15 @@ begin
   policy.check_request request
 rescue Vcert::ValidationError
   puts "invalid request"
+end
+
+
+request = Vcert::Request.new common_name: "test.vfidev.com",  country: "US", province: "Utah", locality: "Salt Lake", organization: "Venafi Inc.", organizational_unit: "Integration"
+puts "try check request"
+begin
+  policy.check_request request
+  puts "valid request"
+rescue Vcert::ValidationError => e
+  puts "invalid request, but should be valid. #{ e }\n maybe you use wrong zone"
+
 end

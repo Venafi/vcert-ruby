@@ -127,6 +127,17 @@ class Vcert::CloudConnection
     return z
   end
 
+  def policy(policy_id)
+    unless policy_id
+      raise Vcert::ClientBadDataError, "policy should be not nil"
+    end
+    status, data = get(URL_TEMPLATE_BY_ID % policy_id)
+    if status != 200
+      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status during geting policy: %s for policy %s" % status, policy_id
+    end
+    parse_policy_responce_to_object(data)
+  end
+
   private
 
   TOKEN_HEADER_NAME = "tppl-api-key"
@@ -209,15 +220,6 @@ class Vcert::CloudConnection
         cert: pems[0],
         chain: pems[1..-1]
     )
-  end
-
-
-  def get_policy_by_id(policy_id)
-    status, data = get(URL_TEMPLATE_BY_ID % policy_id)
-    if status != 200
-      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status during geting policy: %s for policy %s" % status, policy_id
-    end
-    parse_policy_responce_to_object(data)
   end
 
   def parse_policy_responce_to_object(d)

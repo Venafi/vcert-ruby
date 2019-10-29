@@ -238,7 +238,7 @@ class Vcert::TPPConnection
       if value.kind_of? Array
         return value.map { |v| addStartEnd(Regexp.escape(v)) }
       else
-        return addStartEnd(regexp.QuoteMeta(value))
+        return addStartEnd(Regexp.escape(value))
       end
     end
 
@@ -248,9 +248,9 @@ class Vcert::TPPConnection
       subjectCNRegex = [ALL_ALLOWED_REGEX]
     else
       if policy["WildcardsAllowed"]
-        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-*]+' + Regexp.escape("." + d)) }
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w\-*]+' + Regexp.escape("." + d)) }
       else
-        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w-]+' + Regexp.escape("." + d)) }
+        subjectCNRegex = policy["WhitelistedDomains"].map { |d| addStartEnd('[\w\-]+' + Regexp.escape("." + d)) }
       end
     end
     if s["OrganizationalUnit"]["Locked"]
