@@ -127,13 +127,18 @@ class Vcert::CloudConnection
     return z
   end
 
-  def policy(policy_id)
-    unless policy_id
-      raise Vcert::ClientBadDataError, "policy should be not nil"
+  def policy(zone_id)
+    unless zone_id
+      raise Vcert::ClientBadDataError, "Zone should be not nil"
     end
-    status, data = get(URL_TEMPLATE_BY_ID % policy_id)
+    status, data = get(URL_PROJECT_ZONE_DETAILS % zone_id)
     if status != 200
-      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting policy: %s for policy %s" % status, policy_id
+      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting issuing template: %s for zone %s" % status, zone_id
+    end
+    template_id = data['certificateIssuingTemplateId']
+    status, data = get(URL_TEMPLATE_BY_ID % template_id)
+    if status != 200
+      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting policy: %s for issuing template %s" % status, template_id
     end
     parse_policy_responce_to_object(data)
   end
@@ -148,6 +153,7 @@ class Vcert::CloudConnection
   CERT_STATUS_FAILED = 'FAILED'
   CERT_STATUS_ISSUED = 'ISSUED'
   URL_ZONE_BY_TAG = "zones/tag/%s"
+  URL_PROJECT_ZONE_DETAILS = "projectzones/%s"
   URL_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
   URL_CERTIFICATE_REQUESTS = "certificaterequests"
   URL_CERTIFICATE_STATUS = URL_CERTIFICATE_REQUESTS + "/%s"
