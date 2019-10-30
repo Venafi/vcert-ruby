@@ -168,7 +168,6 @@ class Vcert::CloudConnection
   end
 
   def get(url)
-    #   TODO: find a way for normal http error handling
     uri = URI.parse(@url)
     request = Net::HTTP.new(uri.host, uri.port)
     request.use_ssl = true
@@ -230,7 +229,6 @@ class Vcert::CloudConnection
 
   def parse_policy_responce_to_object(d)
     key_types = []
-    # TODO: need to change keytpyes to Vcert::KeyType objects
     d['keyTypes'].each { |kt| key_types.push(['keyType']) }
     Vcert::Policy.new(policy_id: d['id'],
                                name: d['name'],
