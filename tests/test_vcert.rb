@@ -134,6 +134,35 @@ class VcertTest < Minitest::Test
     assert_equal(policy.instance_variable_get("@san_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@key_types").length, 7)
   end
+
+  def test_read_policy_cloud
+    conn = cloud_connection
+
+    policy = conn.policy CLOUDZONE
+    assert_equal(policy.instance_variable_get("@policy_id"), '3da4ba30-c370-11e9-9e69-99559a9ae32a')
+    assert_equal(policy.instance_variable_get("@name"), 'DevOps')
+    assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*.example.com", ".*.example.org", ".*.example.net", ".*.invalid", ".*.local", ".*.localhost", ".*.test"])
+    assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_st_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_l_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_o_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@subject_ou_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@san_regexes"), [".*"])
+    assert_equal(policy.instance_variable_get("@key_types").length, 1)
+  end
+
+  def test_zone_configuration_cloud
+    conn = cloud_connection
+    zone = conn.zone_configuration CLOUDZONE
+    assert_equal(zone.country.value, "")
+    assert_equal(zone.province.value, "")
+    assert_equal(zone.locality.value, "")
+    assert_equal(zone.organization.value, "")
+    assert_equal(zone.organizational_unit.value, "")
+    assert_equal(zone.key_type.value.type, "rsa")
+    assert_equal(zone.key_type.value.option, 2048)
+  end
+
 end
 
 def tpp_connection
