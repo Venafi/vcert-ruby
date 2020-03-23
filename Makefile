@@ -1,4 +1,4 @@
-tests:
+test:
 	ruby -Ilib tests/test_vcert.rb -v
 
 
