@@ -125,7 +125,7 @@ class VcertTest < Minitest::Test
     conn = tpp_connection
 
     policy = conn.policy TPPZONE
-    assert_equal(policy.instance_variable_get("@policy_id"), TPPZONE)
+    assert_equal(policy.instance_variable_get("@policy_id"), '\\VED\\Policy\\' + TPPZONE)
     assert_equal(policy.instance_variable_get("@name"), 'devops\\\\vcert')
     assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
