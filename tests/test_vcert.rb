@@ -50,7 +50,7 @@ class VcertTest < Minitest::Test
     zone_config = conn.zone_configuration(zone)
     request.update_from_zone_config(zone_config)
     cert = conn.request_and_retrieve(request, zone, timeout: 300)
-    assert (cert.cert != nil )
+    assert (cert.cert != nil)
     LOG.info(("cert is:\n" + cert.cert))
     LOG.info(("pk is:\n" + cert.private_key))
 
@@ -58,12 +58,13 @@ class VcertTest < Minitest::Test
     key_object = OpenSSL::PKey::RSA.new(cert.private_key)
     assert certificate_object.check_private_key(key_object)
     LOG.info("Subject is #{certificate_object.subject}")
-
+    sleep(5)
     # Renew test
     renew_request = Vcert::Request.new
     renew_request.id = request.id
     renew_cert_id, renew_private_key = conn.renew(renew_request)
     renew_request.id = renew_cert_id
+    sleep(5)
     renew_cert = conn.retrieve_loop(renew_request)
     LOG.info(("renewd cert is:\n" + renew_cert.cert))
     LOG.info(("renewd cert key is:\n" + renew_private_key))
@@ -74,13 +75,14 @@ class VcertTest < Minitest::Test
     assert renew_certificate_object.check_private_key(renew_key_object), "Renewed cert signed by the wrong key"
     assert (certificate_object.serial != renew_certificate_object.serial), "Original cert sn and renew sn are equal"
     assert (certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1] == renew_certificate_object.subject.to_a.select{|name, _, _| name == 'CN' }.first[1])
-
+    sleep(5)
     #Search by thumbprint test
     thumbprint = OpenSSL::Digest::SHA1.new(renew_certificate_object.to_der).to_s
     LOG.info("Trying to renew by thumbprint #{thumbprint}")
     thumbprint_renew_request = Vcert::Request.new
     thumbprint_renew_request.thumbprint = thumbprint
     thumbprint_renew_cert_id, thumbprint_renew_private_key = conn.renew(thumbprint_renew_request)
+    sleep(5)
     thumbprint_renew_request.id=thumbprint_renew_cert_id
     thumbprint_renew_cert = conn.retrieve_loop(thumbprint_renew_request)
     LOG.info(("thumbprint renewd cert is:\n" + thumbprint_renew_cert.cert))
@@ -96,7 +98,7 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_tpp
-      request_and_renew(tpp_connection, TPPZONE)
+    request_and_renew(tpp_connection, TPPZONE)
   end
 
   def test_request_cloud
@@ -104,7 +106,7 @@ class VcertTest < Minitest::Test
   end
 
   def test_request_fake
-    request_and_renew(Vcert::Connection.new(fake:true), "fake")
+    request_and_renew(Vcert::Connection.new(fake: true), "fake")
   end
 
   def test_zone_configuration_tpp
@@ -123,7 +125,7 @@ class VcertTest < Minitest::Test
     conn = tpp_connection
 
     policy = conn.policy TPPZONE
-    assert_equal(policy.instance_variable_get("@policy_id"), '\VED\Policy\devops\\\\vcert')
+    assert_equal(policy.instance_variable_get("@policy_id"), TPPZONE)
     assert_equal(policy.instance_variable_get("@name"), 'devops\\\\vcert')
     assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
@@ -139,7 +141,7 @@ class VcertTest < Minitest::Test
     conn = cloud_connection
 
     policy = conn.policy CLOUDZONE
-    assert_equal(policy.instance_variable_get("@policy_id"), '3da4ba30-c370-11e9-9e69-99559a9ae32a')
+    assert_equal(policy.instance_variable_get("@policy_id"), CLOUDZONE)
     assert_equal(policy.instance_variable_get("@name"), 'DevOps')
     assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*.example.com", ".*.example.org", ".*.example.net", ".*.invalid", ".*.local", ".*.localhost", ".*.test"])
     assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
