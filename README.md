@@ -15,7 +15,7 @@ VCert Ruby is a Ruby library and SDK  designed to simplify key generation and en
 This implementation is based on the original Go library, https://github.com/Venafi/vcert.
 
 #### Compatibility
-VCert supports Ruby 2.3+.  VCert releases are tested using the latest version of Trust Protection Platform.  The [latest VCert release](../../releases/latest) should be compatible with Trust Protection Platform 17.3 or higher based on the subset of API methods it consumes.
+VCert supports Ruby 2.4+ (older versions usually work but are not tested or supported).  VCert releases are tested using the latest version of Trust Protection Platform.  The [latest VCert release](../../releases/latest) should be compatible with Trust Protection Platform 17.3 or higher based on the subset of API methods it consumes.
 
 ## Installation
 Get the library using gem:  
