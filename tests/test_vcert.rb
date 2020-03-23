@@ -125,7 +125,7 @@ class VcertTest < Minitest::Test
     conn = tpp_connection
 
     policy = conn.policy TPPZONE
-    assert_equal(policy.instance_variable_get("@policy_id"), TPPZONE)
+    assert_equal(policy.instance_variable_get("@policy_id"), "\\\\VED\\\\Policy" + TPPZONE)
     assert_equal(policy.instance_variable_get("@name"), 'devops\\\\vcert')
     assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
@@ -141,9 +141,7 @@ class VcertTest < Minitest::Test
     conn = cloud_connection
 
     policy = conn.policy CLOUDZONE
-    assert_equal(policy.instance_variable_get("@policy_id"), CLOUDZONE)
-    assert_equal(policy.instance_variable_get("@name"), 'DevOps')
-    assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*.example.com", ".*.example.org", ".*.example.net", ".*.invalid", ".*.local", ".*.localhost", ".*.test"])
+    assert_equal(policy.instance_variable_get("@subject_cn_regexes"), [".*.example.com", ".*.example.org", ".*.example.net", ".*.invalid", ".*.local", ".*.localhost", ".*.test", ".*.vfidev.com"])
     assert_equal(policy.instance_variable_get("@subject_c_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@subject_st_regexes"), [".*"])
     assert_equal(policy.instance_variable_get("@subject_l_regexes"), [".*"])
