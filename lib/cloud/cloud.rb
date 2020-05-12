@@ -3,7 +3,11 @@ require 'utils/utils'
 
 class Vcert::CloudConnection
   def initialize(url, token)
-    @url = url
+    if url == nil
+      @url = "https://api.venafi.cloud/v1"
+    else
+      @url = url
+    end
     @token = token
   end
 
