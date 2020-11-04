@@ -1,5 +1,10 @@
 require 'net/https'
 require 'time'
+require 'fake/fake'
+require 'cloud/cloud'
+require 'tpp/tpp'
+require 'tpp/tpp_token'
+require 'objects/objects'
 
 TIMEOUT = 420
 
@@ -14,12 +19,12 @@ module Vcert
     def initialize(url: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil, fake: false)
       if fake
         @conn = FakeConnection.new
-      elsif cloud_token != nil
+      elsif !cloud_token.nil?
         @conn = CloudConnection.new url, cloud_token
-      elsif user != nil && password != nil && url != nil then
+      elsif !user.nil? && !password.nil? && !url.nil?
         @conn = TPPConnection.new url, user, password, trust_bundle:trust_bundle
       else
-        raise ClientBadDataError, "Invalid credentials list"
+        raise ClientBadDataError, 'Invalid credentials list'
       end
     end
 
@@ -62,30 +67,39 @@ module Vcert
     # @return [Certificate]
     def request_and_retrieve(req, zone, timeout: TIMEOUT)
       request zone, req
-      cert = retrieve_loop(req, timeout: timeout)
-      return cert
+      retrieve_loop(req, timeout: timeout)
+      
     end
 
     def retrieve_loop(req, timeout: TIMEOUT)
-      t = Time.new() + timeout
+      t = Time.new + timeout
       loop do
-        if Time.new() > t
+        if Time.new > t
           LOG.info("Waiting certificate #{req.id}")
           break
         end
         certificate = @conn.retrieve(req)
-        if certificate != nil
-          return certificate
-        end
+        return certificate unless certificate.nil?
         sleep 10
       end
-      return nil
+      nil
     end
 
   end
+
+  class VenafiConnection
+    def initialize(url: nil, access_token: nil, refresh_token: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil, fake: false)
+      if fake
+        @conn = FakeConnection.new
+      elsif !cloud_token.nil?
+        @conn = CloudConnection.new url, cloud_token
+      elsif (!access_token.nil? || !refresh_token.nil? || (!user.nil? && !password.nil?)) && !url.nil?
+        @conn = TokenConnection.new url: url, access_token: access_token, refresh_token: refresh_token, user: user,
+                                         password: password, trust_bundle: trust_bundle
+      else
+        raise ClientBadDataError, 'Invalid credentials list'
+      end
+    end
+  end
 end
 
-require 'fake/fake'
-require 'cloud/cloud'
-require 'tpp/tpp'
-require 'objects/objects'

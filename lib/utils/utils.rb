@@ -96,3 +96,30 @@ def parse_csr_fields(csr)
   LOG.info("Parsed CSR fields:\n #{result.inspect}")
   return result
 end
+
+CLIENT_ID = 'vcert-sdk'
+SCOPE = 'certificate:manage,revoke'
+
+class Vcert::Authentication
+  def initialize (access_token: nil, refresh_token: nil, user: nil, password: nil, expiration_date: nil, client_id: CLIENT_ID, scope: SCOPE)
+    @access_token = access_token
+    @refresh_token = refresh_token
+    @user = user
+    @password = password
+    @token_expiration_date = expiration_date
+    @client_id = client_id
+    @scope = scope
+  end
+end
+
+class Vcert::TokenInfo
+  def initialize (access_token, expires, identity, refresh_token, refresh_until, scope, token_type)
+    @access_token = access_token
+    @refresh_token = refresh_token
+    @refresh_until = refresh_until
+    @expires = expires
+    @identity = identity
+    @scope = scope
+    @token_type = token_type
+  end
+end
