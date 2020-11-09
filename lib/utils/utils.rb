@@ -19,16 +19,16 @@ def parse_pem_list(multiline)
 end
 
 def parse_csr_fields(csr)
-  LOG.info("Trying to parse CSR:\n#{csr}")
+  LOG.info("#{Vcert::VCERT_PREFIX} Trying to parse CSR:\n#{csr}")
   csr_obj = OpenSSL::X509::Request.new(csr)
   result = Hash.new
 
   subject_array = csr_obj.subject.to_a
-  subject_array.map { |x|
+  subject_array.map do |x|
     if x[1] != ""
       result[x[0].to_sym] = x[1]
     end
-  }
+  end
 
   attributes = csr_obj.attributes
 
@@ -93,33 +93,54 @@ def parse_csr_fields(csr)
   end
 
 
-  LOG.info("Parsed CSR fields:\n #{result.inspect}")
+  LOG.info("#{Vcert::VCERT_PREFIX} Parsed CSR fields:\n #{result.inspect}")
   return result
 end
 
-CLIENT_ID = 'vcert-sdk'
-SCOPE = 'certificate:manage,revoke'
+def parse_csr_fields_tpp(csr)
+  LOG.info("#{Vcert::VCERT_PREFIX} Trying to parse CSR:\n#{csr}")
+  csr_obj = OpenSSL::X509::Certificate.new(csr)
+  result = Hash.new
 
-class Vcert::Authentication
-  def initialize (access_token: nil, refresh_token: nil, user: nil, password: nil, expiration_date: nil, client_id: CLIENT_ID, scope: SCOPE)
-    @access_token = access_token
-    @refresh_token = refresh_token
-    @user = user
-    @password = password
-    @token_expiration_date = expiration_date
-    @client_id = client_id
-    @scope = scope
+  subject_array = csr_obj.subject.to_a
+  subject_array.map do |x|
+    result[x[0].to_sym] = x[1] unless x[1] == ''
+  end
+
+  LOG.info("#{Vcert::VCERT_PREFIX} Parsed CSR fields:\n #{result.inspect}")
+  result
+end
+
+CLIENT_ID = 'vcert-sdk'.freeze
+SCOPE = 'certificate:discover,manage,revoke'.freeze
+
+module Vcert
+  class Authentication
+    attr_accessor :access_token, :refresh_token, :user, :password, :token_expiration_date, :client_id, :scope
+
+    def initialize (access_token: nil, refresh_token: nil, user: nil, password: nil, expiration_date: nil, client_id: CLIENT_ID, scope: SCOPE)
+      @access_token = access_token
+      @refresh_token = refresh_token
+      @user = user
+      @password = password
+      @token_expiration_date = expiration_date
+      @client_id = client_id
+      @scope = scope
+    end
+  end
+
+  class TokenInfo
+    attr_reader :access_token, :refresh_token, :refresh_until, :expires, :identity, :scope, :token_type
+
+    def initialize (access_token, expires, identity, refresh_token, refresh_until, scope, token_type)
+      @access_token = access_token
+      @refresh_token = refresh_token
+      @refresh_until = refresh_until
+      @expires = expires
+      @identity = identity
+      @scope = scope
+      @token_type = token_type
+    end
   end
 end
 
-class Vcert::TokenInfo
-  def initialize (access_token, expires, identity, refresh_token, refresh_until, scope, token_type)
-    @access_token = access_token
-    @refresh_token = refresh_token
-    @refresh_until = refresh_until
-    @expires = expires
-    @identity = identity
-    @scope = scope
-    @token_type = token_type
-  end
-end

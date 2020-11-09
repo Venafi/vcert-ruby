@@ -12,7 +12,7 @@ TPPUSER = ENV['TPP_USER']
 TPPPASSWORD = ENV['TPP_PASSWORD']
 TPPZONE = ENV['TPP_ZONE']
 TRUST_BUNDLE = ENV['TRUST_BUNDLE']
-TOKEN_URL = ENV['TPP_TOKEN_URL']
+TPP_TOKEN_URL = ENV['TPP_TOKEN_URL']
 CSR_TEST = '-----BEGIN CERTIFICATE REQUEST-----
 MIIC5TCCAc0CAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBFV0YWgxFzAVBgNV
 BAcMDlNhbHQgTGFrZSBDaXR5MQ8wDQYDVQQKDAZWZW5hZmkxFDASBgNVBAsMC0lu
@@ -209,7 +209,7 @@ def cloud_connection
 end
 
 def token_connection
-  Vcert::VenafiConnection.new url: TOKEN_URL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+  Vcert::VenafiConnection.new url: TPP_TOKEN_URL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
 end
 
 class VcertLocalTest < Minitest::Test
@@ -305,7 +305,7 @@ class VcertLocalTest < Minitest::Test
   end
 
   def test_zone_configuation_parser_tpp
-    conn = tpp_connection().instance_variable_get('@conn')
+    conn = tpp_connection.instance_variable_get('@conn')
     data = JSON.parse '{"Error":null,"Policy":{"CertificateAuthority":{"Locked":false,"Value":"\\VED\\Policy\\devops\\msca_template"},"CsrGeneration":{"Locked":false,"Value":"UserProvided"},"KeyGeneration":{"Locked":false,"Value":"Central"},"KeyPair":{"KeyAlgorithm":{"Locked":false,"Value":"RSA"},"KeySize":{"Locked":false,"Value":2048}},"ManagementType":{"Locked":false,"Value":"Enrollment"},"PrivateKeyReuseAllowed":true,"SubjAltNameDnsAllowed":true,"SubjAltNameEmailAllowed":true,"SubjAltNameIpAllowed":true,"SubjAltNameUpnAllowed":true,"SubjAltNameUriAllowed":true,"Subject":{"City":{"Locked":false,"Value":"Salt Lake"},"Country":{"Locked":false,"Value":"US"},"Organization":{"Locked":false,"Value":"Venafi Inc."},"OrganizationalUnit":{"Locked":false,"Values":["Integrations"]},"State":{"Locked":false,"Value":"Utah"}},"UniqueSubjectEnforced":false,"WhitelistedDomains":[],"WildcardsAllowed":true}}'
     zone = conn.send(:parse_zone_configuration, data)
     assert_equal(zone.key_type.value.type, 'rsa')
@@ -334,4 +334,39 @@ def new_policy_test_wrapper(policy_id: nil, name: '', system_generated: false, c
                     subject_ou_regexes: subject_ou_regexes, subject_st_regexes: subject_st_regexes,
                     subject_l_regexes: subject_l_regexes, subject_c_regexes: subject_c_regexes, san_regexes: san_regexes,
                     key_types: key_types)
+end
+
+class VcertTokenTest < Minitest::Test
+  def test_access_token
+    conn = Vcert::VenafiConnection.new url: TPP_TOKEN_URL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+    token_info = conn.get_access_token
+    assert !token_info.access_token.nil?, 'Expected access token but is nil.'
+    assert !token_info.refresh_token.nil?, 'Expected refresh token but is nil.'
+    assert !token_info.expires.nil?, 'Expected expiration date, but is nil'
+  end
+
+  def test_refresh_token
+    conn = Vcert::VenafiConnection.new url: TPP_TOKEN_URL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+    token_info = conn.get_access_token
+    old_access_token = token_info.access_token
+    LOG.info("<token_test> Old access token is: [#{old_access_token}]")
+    old_refresh_token = token_info.refresh_token
+    LOG.info("<token_test> Old refresh token is: [#{old_refresh_token}]")
+
+    token_info = conn.refresh_access_token
+    new_access_token = token_info.access_token
+    LOG.info("<token_test> New access token is: [#{new_access_token}]")
+    new_refresh_token = token_info.refresh_token
+    LOG.info("<token_test> New refresh token is: [#{new_refresh_token}]")
+
+    assert old_access_token != new_access_token, "Expected new access token, but got:\nOld= [#{old_access_token}],\nNew= [#{new_access_token}]"
+    assert old_refresh_token != new_refresh_token, "Expected new refresh token, but got:\nOld= [#{old_refresh_token}]\nNew= [#{new_refresh_token}]"
+  end
+
+  def test_revoke_token
+    conn = Vcert::VenafiConnection.new url: TPP_TOKEN_URL, user: TPPUSER, password: TPPPASSWORD, trust_bundle: TRUST_BUNDLE
+    conn.get_access_token
+    conn.revoke_access_token
+    assert_raises(Vcert::ServerUnexpectedBehaviorError) { conn.zone_configuration TPPZONE }
+  end
 end

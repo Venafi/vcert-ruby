@@ -2,12 +2,14 @@ require 'json'
 require 'utils/utils'
 
 class Vcert::CloudConnection
+  CLOUD_PREFIX = '<Cloud>'.freeze
+
   def initialize(url, token)
-    if url == nil
-      @url = "https://api.venafi.cloud/v1"
-    else
-      @url = url
-    end
+    @url = if url.nil?
+             'https://api.venafi.cloud/v1'.freeze
+           else
+             url
+           end
     @token = token
   end
 
@@ -178,10 +180,11 @@ class Vcert::CloudConnection
     url = uri.path + "/" + url
 
 
+    LOG.info("#{CLOUD_PREFIX} GET #{url}")
     response = request.get(url, {TOKEN_HEADER_NAME => @token})
     case response.code.to_i
     when 200, 201, 202, 409
-      LOG.info(("HTTP status OK"))
+      LOG.info("#{CLOUD_PREFIX} GET HTTP status OK")
     when 403
       raise Vcert::AuthenticationError
     else
@@ -210,10 +213,11 @@ class Vcert::CloudConnection
     request.use_ssl = true
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
+    LOG.info("#{CLOUD_PREFIX} POST #{url}")
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json", "Accept" => "application/json"})
     case response.code.to_i
     when 200, 201, 202, 409
-      LOG.info(("HTTP status OK"))
+      LOG.info("#{CLOUD_PREFIX} POST HTTP status OK")
     when 403
       raise Vcert::AuthenticationError
     else
