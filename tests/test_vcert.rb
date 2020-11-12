@@ -87,8 +87,8 @@ class VcertTest < Minitest::Test
     sleep(5)
     thumbprint_renew_request.id=thumbprint_renew_cert_id
     thumbprint_renew_cert = conn.retrieve_loop(thumbprint_renew_request)
-    LOG.info(("thumbprint renewd cert is:\n#{thumbprint_renew_cert.cert}"))
-    LOG.info(("thumbprint renewd key is:\n#{thumbprint_renew_private_key}"))
+    LOG.info(("thumbprint renewed cert is:\n#{thumbprint_renew_cert.cert}"))
+    LOG.info(("thumbprint renewed key is:\n#{thumbprint_renew_private_key}"))
     assert (thumbprint_renew_cert.cert != nil )
     thumbprint_renew_certificate_object = OpenSSL::X509::Certificate.new(thumbprint_renew_cert.cert)
     assert !thumbprint_renew_certificate_object.check_private_key(renew_key_object), 'Renewed thumbprint cert signed by same key'

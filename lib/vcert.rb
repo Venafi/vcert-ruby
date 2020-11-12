@@ -106,11 +106,11 @@ module Vcert
   #
   class VenafiConnection < Connection
 
-    def initialize(url: nil, access_token: nil, refresh_token: nil, user: nil, password: nil, cloud_token: nil, trust_bundle:nil, fake: false)
+    def initialize(url: nil, access_token: nil, refresh_token: nil, user: nil, password: nil, apikey: nil, trust_bundle:nil, fake: false)
       if fake
         @conn = FakeConnection.new
       elsif !cloud_token.nil?
-        @conn = CloudConnection.new url, cloud_token
+        @conn = CloudConnection.new url, apikey
       elsif (!access_token.nil? || !refresh_token.nil? || (!user.nil? && !password.nil?)) && !url.nil?
         @conn = TokenConnection.new url, access_token: access_token, refresh_token: refresh_token, user: user,
                                     password: password, trust_bundle: trust_bundle

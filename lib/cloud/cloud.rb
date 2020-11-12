@@ -4,13 +4,13 @@ require 'utils/utils'
 class Vcert::CloudConnection
   CLOUD_PREFIX = '<Cloud>'.freeze
 
-  def initialize(url, token)
+  def initialize(url, apikey)
     @url = if url.nil?
              'https://api.venafi.cloud/v1'.freeze
            else
              url
            end
-    @token = token
+    @apikey = apikey
   end
 
 
@@ -181,7 +181,7 @@ class Vcert::CloudConnection
 
 
     LOG.info("#{CLOUD_PREFIX} GET #{url}")
-    response = request.get(url, {TOKEN_HEADER_NAME => @token})
+    response = request.get(url, { TOKEN_HEADER_NAME => @apikey })
     case response.code.to_i
     when 200, 201, 202, 409
       LOG.info("#{CLOUD_PREFIX} GET HTTP status OK")
@@ -214,7 +214,7 @@ class Vcert::CloudConnection
     url = uri.path + "/" + url
     encoded_data = JSON.generate(data)
     LOG.info("#{CLOUD_PREFIX} POST #{url}")
-    response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token, "Content-Type" => "application/json", "Accept" => "application/json"})
+    response = request.post(url, encoded_data, { TOKEN_HEADER_NAME => @apikey, "Content-Type" => "application/json", "Accept" => "application/json" })
     case response.code.to_i
     when 200, 201, 202, 409
       LOG.info("#{CLOUD_PREFIX} POST HTTP status OK")
