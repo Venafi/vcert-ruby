@@ -112,7 +112,7 @@ def parse_csr_fields_tpp(csr)
 end
 
 CLIENT_ID = 'vcert-sdk'.freeze
-SCOPE = 'certificate:discover,manage,revoke'.freeze
+SCOPE = 'certificate:manage,revoke'.freeze
 
 module Vcert
   class Authentication
