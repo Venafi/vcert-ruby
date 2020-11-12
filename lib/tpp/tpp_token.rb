@@ -187,8 +187,8 @@ class Vcert::TokenConnection
     headers.merge!(HEADER_NAME_AUTHORIZATION => build_authorization_header_value) if include_headers
     LOG.info("#{Vcert::VCERT_PREFIX} POST request: url: [#{url}], data: [#{encoded_data}], headers: [#{headers}]")
     response = request.post(url, encoded_data, headers)
+    LOG.info("#{Vcert::VCERT_PREFIX} POST response: [#{response.body}]")
     data = JSON.parse(response.body)
-    LOG.info("#{Vcert::VCERT_PREFIX} POST response: [#{data}]")
     [response.code.to_i, data]
   end
 
