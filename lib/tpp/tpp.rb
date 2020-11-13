@@ -133,7 +133,7 @@ class Vcert::TPPConnection
     end
     url = uri.path + url
     encoded_data = JSON.generate(data)
-    LOG.info("#{Vcert::VCERT_PREFIX} POST request: #{request.inspect}\n\tpath: #{url}\n\tdata: #{encoded_data}\n\theaders: #{headers}")
+    LOG.info("#{Vcert::VCERT_PREFIX} POST request: #{request.inspect}\n\tpath: #{url}\n\tdata: #{encoded_data}")
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
     data = JSON.parse(response.body)
     return response.code.to_i, data
