@@ -150,7 +150,7 @@ class Vcert::TPPConnection
       request.ca_file = @trust_bundle
     end
     url = uri.path + url
-    LOG.info("#{Vcert::VCERT_PREFIX} GET request: #{request.inspect}\n\tpath: #{url}\n\theaders: [#{headers}]")
+    LOG.info("#{Vcert::VCERT_PREFIX} GET request: #{request.inspect}\n\tpath: #{url}")
     response = request.get(url, { TOKEN_HEADER_NAME => @token[0] })
     # TODO: check valid json
     data = JSON.parse(response.body)
