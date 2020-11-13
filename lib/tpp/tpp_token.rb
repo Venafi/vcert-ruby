@@ -185,7 +185,7 @@ class Vcert::TokenConnection
       'Content-Type': 'application/json'
     }
     headers.merge!(HEADER_NAME_AUTHORIZATION => build_authorization_header_value) if include_headers
-    LOG.info("#{Vcert::VCERT_PREFIX} POST request: url: [#{url}], data: [#{encoded_data}], headers: [#{headers}]")
+    LOG.info("#{Vcert::VCERT_PREFIX} POST request: #{request.inspect}\n\tpath: #{url}\n\tdata: #{encoded_data}\n\theaders: #{headers}")
     response = request.post(url, encoded_data, headers)
     LOG.info("#{Vcert::VCERT_PREFIX} POST response: [#{response.body}]")
     data = JSON.parse(response.body)
@@ -208,7 +208,7 @@ class Vcert::TokenConnection
 
     headers = {}
     headers = { HEADER_NAME_AUTHORIZATION => build_authorization_header_value } if include_headers
-    LOG.info("#{Vcert::VCERT_PREFIX} GET request: url: [#{url}], headers: [#{headers}]")
+    LOG.info("#{Vcert::VCERT_PREFIX} GET request: #{request.inspect}\n\tpath: #{url}\n\theaders: [#{headers}]")
     response = request.get(url, headers)
     LOG.info("#{Vcert::VCERT_PREFIX} GET response with status [#{response.code}]. #{response.inspect} ")
     # TODO: check valid json
