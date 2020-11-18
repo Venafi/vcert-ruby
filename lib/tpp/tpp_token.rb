@@ -182,7 +182,7 @@ class Vcert::TokenConnection
     url = uri.path + url
     encoded_data = JSON.generate(data)
     headers = {
-      'Content-Type': 'application/json'
+      'Content-Type' => 'application/json'
     }
     headers.merge!(HEADER_NAME_AUTHORIZATION => build_authorization_header_value) if include_headers
     LOG.info("#{Vcert::VCERT_PREFIX} POST request: #{request.inspect}\n\tpath: #{url}\n\tdata: #{encoded_data}\n\theaders: #{headers}")
