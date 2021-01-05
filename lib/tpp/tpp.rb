@@ -55,43 +55,36 @@ class Vcert::TPPConnection
   end
 
   def renew(request, generate_new_key: true)
-    if request.id == nil && request.thumbprint == nil
-      raise("Either request ID or certificate thumbprint is required to renew the certificate")
+    if request.id.nil? && request.thumbprint.nil?
+      raise('Either request ID or certificate thumbprint is required to renew the certificate')
     end
 
-    if request.thumbprint != nil
-      request.id = search_by_thumbprint(request.thumbprint)
-    end
+    request.id = search_by_thumbprint(request.thumbprint) unless request.thumbprint.nil?
     renew_req_data = {"CertificateDN": request.id}
     if generate_new_key
-      _, r = post(URL_SECRET_STORE_SEARCH, d = {"Namespace": "config", "Owner": request.id, "VaultType": 512})
-      vaultId = r["VaultIDs"][0]
-      _, r = post(URL_SECRET_STORE_RETRIEVE, d = {"VaultID": vaultId})
-      csr_base64_data = r['Base64Data']
-      csr_pem = "-----BEGIN CERTIFICATE REQUEST-----\n#{csr_base64_data}\n-----END CERTIFICATE REQUEST-----\n"
-      parsed_csr = parse_csr_fields(csr_pem)
+      csr_base64_data = retrieve request
+      LOG.info("Retrieved certificate:\n#{csr_base64_data.cert}")
+      parsed_csr = parse_csr_fields_tpp(csr_base64_data.cert)
       renew_request = Vcert::Request.new(
-          common_name: parsed_csr.fetch(:CN, nil),
-          san_dns: parsed_csr.fetch(:DNS, nil),
-          country: parsed_csr.fetch(:C, nil),
-          province: parsed_csr.fetch(:ST, nil),
-          locality: parsed_csr.fetch(:L, nil),
-          organization: parsed_csr.fetch(:O, nil),
-          organizational_unit: parsed_csr.fetch(:OU, nil))
+        common_name: parsed_csr.fetch(:CN, nil),
+        san_dns: parsed_csr.fetch(:DNS, nil),
+        country: parsed_csr.fetch(:C, nil),
+        province: parsed_csr.fetch(:ST, nil),
+        locality: parsed_csr.fetch(:L, nil),
+        organization: parsed_csr.fetch(:O, nil),
+        organizational_unit: parsed_csr.fetch(:OU, nil)
+      )
       renew_req_data.merge!(PKCS10: renew_request.csr)
     end
-    LOG.info("Trying to renew certificate %s" % request.id)
+    LOG.info("Trying to renew certificate #{request.id}")
     _, d = post(URL_CERTIFICATE_RENEW, renew_req_data)
-    if d.key?('Success')
-      if generate_new_key
-        return request.id, renew_request.private_key
-      else
-        return request.id, nil
-      end
-    else
-      raise "Certificate renew error"
-    end
+    raise 'Certificate renew error' unless d.key?('Success')
 
+    if generate_new_key
+      [request.id, renew_request.private_key]
+    else
+      [request.id, nil]
+    end
   end
 
   private
@@ -140,6 +133,7 @@ class Vcert::TPPConnection
     end
     url = uri.path + url
     encoded_data = JSON.generate(data)
+    LOG.info("#{Vcert::VCERT_PREFIX} POST request: #{request.inspect}\n\tpath: #{url}\n\tdata: #{encoded_data}")
     response = request.post(url, encoded_data, {TOKEN_HEADER_NAME => @token[0], "Content-Type" => "application/json"})
     data = JSON.parse(response.body)
     return response.code.to_i, data
@@ -156,7 +150,8 @@ class Vcert::TPPConnection
       request.ca_file = @trust_bundle
     end
     url = uri.path + url
-    response = request.get(url, {TOKEN_HEADER_NAME => @token[0]})
+    LOG.info("#{Vcert::VCERT_PREFIX} GET request: #{request.inspect}\n\tpath: #{url}")
+    response = request.get(url, { TOKEN_HEADER_NAME => @token[0] })
     # TODO: check valid json
     data = JSON.parse(response.body)
     return response.code.to_i, data
