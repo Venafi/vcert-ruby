@@ -1,3 +1,5 @@
+require 'socket'
+
 def parse_pem_list(multiline)
   pems = []
   buf = ""
@@ -144,3 +146,12 @@ module Vcert
   end
 end
 
+def getApiClientInformation()
+  ip = Socket.ip_address_list.detect{|intf| intf.ipv4_private?}
+  ip_addres = ip.ip_address
+  data = {
+    type: CLIENT_ID,
+    identifier: ip_addres
+  }
+  return data
+end

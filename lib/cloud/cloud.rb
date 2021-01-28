@@ -1,5 +1,6 @@
 require 'json'
 require 'utils/utils'
+require 'addressable/uri'
 
 class Vcert::CloudConnection
   CLOUD_PREFIX = '<Cloud>'.freeze
@@ -15,8 +16,12 @@ class Vcert::CloudConnection
 
 
   def request(zone_tag, request)
-    zone_id = get_zoneId_by_tag(zone_tag)
-    _, data = post(URL_CERTIFICATE_REQUESTS, {:zoneId => zone_id, :certificateSigningRequest => request.csr})
+    zone_config = zone_configuration(zone_tag)
+    _, data = post(URL_CERTIFICATE_REQUESTS, {:applicationId => zone_config.app_id,
+                                              :certificateIssuingTemplateId=>zone_config.cit_id,
+                                              :certificateSigningRequest => request.csr,
+                                              :apiClientInformation => getApiClientInformation
+    })
     LOG.debug("Raw response to certificate request:")
     LOG.debug(JSON.pretty_generate(data))
     request.id = data['certificateRequests'][0]["id"]
@@ -34,7 +39,8 @@ class Vcert::CloudConnection
       when CERT_STATUS_FAILED
         raise Vcert::ServerUnexpectedBehaviorError, "Certificate issue status is FAILED"
       when CERT_STATUS_ISSUED
-        status, full_chain = get(URL_CERTIFICATE_RETRIEVE % request.id + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
+        cert_arr = data["certificateIds"]
+        status, full_chain = get(URL_CERTIFICATE_RETRIEVE % cert_arr[0] + "?chainOrder=#{CHAIN_OPTION_ROOT_LAST}&format=PEM")
         if status == 200
           cert = parse_full_chain full_chain
           if cert.private_key == nil
@@ -57,30 +63,38 @@ class Vcert::CloudConnection
       raise Vcert::ClientBadDataError, "Either request ID or certificate thumbprint is required to renew the certificate"
     end
     if request.thumbprint != nil
-      manage_id = search_by_thumbprint(request.thumbprint)
+      cert_id, request_id = search_by_thumbprint(request.thumbprint)
     end
     if request.id != nil
       prev_request = get_cert_status(request)
-      manage_id = prev_request[:manage_id]
+      request_id = request.id
       zone = prev_request[:zoneId]
     end
-    if manage_id == nil
-      raise Vcert::VcertError, "Can't find the existing certificate"
+    if request_id == nil
+      raise Vcert::VcertError, "Can't find the existing certificate request id"
     end
 
-    status, data = get(URL_MANAGED_CERTIFICATE_BY_ID % manage_id)
+    status, data = get(URL_CERTIFICATE_STATUS % request_id)
+
     if status == 200
-      request.id = data['latestCertificateRequestId']
+      request.id = data['id']
+      cert_id = data['certificateIds'][0]
     else
       raise Vcert::ServerUnexpectedBehaviorError, "Status #{status}"
     end
 
-    if zone == nil
+
+    if prev_request == nil
       prev_request = get_cert_status(request)
-      zone = prev_request[:zoneId]
     end
 
-    d = {existingManagedCertificateId: manage_id, zoneId: zone}
+
+    d = {existingCertificateId: cert_id,
+         applicationId: data["applicationId"],
+         certificateIssuingTemplateId: data["certificateIssuingTemplateId"],
+         apiClientInformation: getApiClientInformation
+
+    }
     if request.csr?
       d.merge!(certificateSigningRequest: request.csr)
       d.merge!(reuseCSR: false)
@@ -96,7 +110,8 @@ class Vcert::CloudConnection
           organizational_unit: parsed_csr[:OU])
       d.merge!(certificateSigningRequest: renew_request.csr)
     else
-      d.merge!(reuseCSR: true)
+      raise Vcert::VcertError, "This operation is not yet supported"
+      #d.merge!(reuseCSR: true)
     end
 
     status, data = post(URL_CERTIFICATE_REQUESTS, data = d)
@@ -118,9 +133,23 @@ class Vcert::CloudConnection
       raise Vcert::ClientBadDataError, "Zone should not be empty"
     end
     LOG.info("Getting configuration for zone #{tag}")
-    _, data = get(URL_ZONE_BY_TAG % tag)
-    template_id = data['certificateIssuingTemplateId']
-    _, data = get(URL_TEMPLATE_BY_ID % template_id)
+    arr = tag.split("\\", 2)
+
+    app_name = arr[0]
+    cit_alias = arr[1]
+
+    if app_name.to_s.strip.empty? || cit_alias.to_s.strip.empty?
+      raise Vcert::ClientBadDataError, "The parameters: app_name, cit_alias or both are empty"
+    end
+    app_name =  Addressable::URI.encode_component(app_name, Addressable::URI::CharacterClasses::QUERY)
+    cit_alias =  Addressable::URI.encode_component(cit_alias, Addressable::URI::CharacterClasses::QUERY)
+
+    #get cit
+    _, data = get(URL_CIT_BY_APP_NAME_CIT_ALIAS % [app_name, cit_alias])
+
+    #get app info
+    _, app = get(URL_APPLICATION_BY_NAME % app_name)
+
     kt = Vcert::KeyType.new data['keyTypes'][0]["keyType"], data['keyTypes'][0]["keyLengths"][0].to_i
     z = Vcert::ZoneConfiguration.new(
         country: Vcert::CertField.new(""),
@@ -130,6 +159,9 @@ class Vcert::CloudConnection
         organizational_unit: Vcert::CertField.new(""),
         key_type: Vcert::CertField.new(kt, locked: true),
     )
+    z.app_id = app["id"]
+    z.cit_id = data["id"]
+
     return z
   end
 
@@ -137,14 +169,21 @@ class Vcert::CloudConnection
     unless zone_id
       raise Vcert::ClientBadDataError, "Zone should be not nil"
     end
-    status, data = get(URL_PROJECT_ZONE_DETAILS % zone_id)
+    arr = zone_id.split("\\", 2)
+
+    app_name = arr[0]
+    cit_alias = arr[1]
+
+    if app_name.to_s.strip.empty? || cit_alias.to_s.strip.empty?
+      raise Vcert::ClientBadDataError, "The parameters: app_name, cit_alias or both are empty"
+    end
+
+    app_name =  Addressable::URI.encode_component(app_name, Addressable::URI::CharacterClasses::QUERY)
+    cit_alias =  Addressable::URI.encode_component(cit_alias, Addressable::URI::CharacterClasses::QUERY)
+    status, data = get(URL_CIT_BY_APP_NAME_CIT_ALIAS % [app_name, cit_alias])
+    puts data
     if status != 200
       raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting issuing template: %s for zone %s" % status, zone_id
-    end
-    template_id = data['certificateIssuingTemplateId']
-    status, data = get(URL_TEMPLATE_BY_ID % template_id)
-    if status != 200
-      raise Vcert::ServerUnexpectedBehaviorError, "Invalid status getting policy: %s for issuing template %s" % status, template_id
     end
     parse_policy_responce_to_object(data)
   end
@@ -158,20 +197,13 @@ class Vcert::CloudConnection
   CERT_STATUS_PENDING = 'PENDING'
   CERT_STATUS_FAILED = 'FAILED'
   CERT_STATUS_ISSUED = 'ISSUED'
-  URL_ZONE_BY_TAG = "zones/tag/%s"
-  URL_PROJECT_ZONE_DETAILS = "projectzones/%s"
-  URL_TEMPLATE_BY_ID = "certificateissuingtemplates/%s"
-  URL_CERTIFICATE_REQUESTS = "certificaterequests"
+  URL_CIT_BY_APP_NAME_CIT_ALIAS = "outagedetection/v1/applications/%s/certificateissuingtemplates/%s"
+  URL_APPLICATION_BY_NAME = "outagedetection/v1/applications/name/%s"
+  URL_CERTIFICATE_REQUESTS = "outagedetection/v1/certificaterequests"
   URL_CERTIFICATE_STATUS = URL_CERTIFICATE_REQUESTS + "/%s"
-  URL_CERTIFICATE_RETRIEVE = URL_CERTIFICATE_REQUESTS + "/%s/certificate"
-  URL_CERTIFICATE_SEARCH = "certificatesearch"
-  URL_MANAGED_CERTIFICATES = "managedcertificates"
-  URL_MANAGED_CERTIFICATE_BY_ID = URL_MANAGED_CERTIFICATES + "/%s"
+  URL_CERTIFICATE_RETRIEVE = "outagedetection/v1/certificates/%s/contents"
+  URL_CERTIFICATE_SEARCH = "outagedetection/v1/certificatesearch"
 
-  def get_zoneId_by_tag(tag)
-    _, data = get(URL_ZONE_BY_TAG % tag)
-    data['id']
-  end
 
   def get(url)
     uri = URI.parse(@url)
@@ -262,9 +294,10 @@ class Vcert::CloudConnection
       raise Vcert::ServerUnexpectedBehaviorError, "Status: #{status}. Message: #{data.body.to_s}"
     end
     # TODO: check data
-    manageId = data['certificates'][0]['managedCertificateId']
-    LOG.info("Found existing certificate with ID #{manageId}")
-    return manageId
+    certId = data['certificates'][0]['id']
+    certReqId = data['certificates'][0]['certificateRequestId']
+    LOG.info("Found existing certificate with ID #{certId}")
+    return certId, certReqId
   end
 
   def get_cert_status(request)
