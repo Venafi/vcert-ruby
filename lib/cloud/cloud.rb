@@ -7,7 +7,7 @@ class Vcert::CloudConnection
 
   def initialize(url, apikey)
     @url = if url.nil?
-             'https://api.venafi.cloud/v1'.freeze
+             'https://api.venafi.cloud'.freeze
            else
              url
            end
