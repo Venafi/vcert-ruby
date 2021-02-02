@@ -10,5 +10,5 @@ Gem::Specification.new do |s|
   s.homepage    =
     'https://rubygems.org/gems/vcert'
   s.license       = 'Apache-2.0'
-  s.add_runtime_dependency 'addressable', '~> 2.7.0'
+  s.add_runtime_dependency 'addressable', '~> 2.7', '>= 2.7.0'
 end
