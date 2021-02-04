@@ -43,6 +43,26 @@ For code samples of programmatic use, please review the files in [/examples](/ex
     7. (Recommended) Key Bit Strength set to 2048 or higher
     8. (Recommended) Domain Whitelisting policy appropriately assigned
 
+## Prerequisites for using with Venafi Cloud
+
+1. The Venafi Cloud REST API is accessible at https://api.venafi.cloud from the system where VCert
+will be executed.
+2. You have successfully registered for a Venafi Cloud account, have been granted at least the
+OutagePREDICT "Resource Owner" role, and know your API key.
+3. A CA Account and Issuing Template exist and have been configured with:
+    1. Recommended Settings values for:
+        1. Organizational Unit (OU)
+        2. Organization (O)
+        3. City/Locality (L)
+        4. State/Province (ST)
+        5. Country (C)
+    2. Issuing Rules that:
+        1. (Recommended) Limits Common Name and Subject Alternative Name to domains that are allowed by your organization
+        2. (Recommended) Restricts the Key Length to 2048 or higher
+        3. (Recommended) Does not allow Private Key Reuse
+4. An OutagePREDICT Application exists where you are among the owners, and you know the Application Name.
+5. An Issuing Template is assigned to the Application, and you know its API Alias.
+
 ## Contributing to VCert
 
 Venafi welcomes contributions from the developer community.
