@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'vcert'
-  s.version     = '0.3.0'
+  s.version     = '0.3.1'
   s.date        = '2021-02-03'
   s.summary     = "Library for Venafi products"
   s.description = "Ruby client for Venafi Cloud and Trust Protection Platform"
