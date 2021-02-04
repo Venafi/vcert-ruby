@@ -300,7 +300,8 @@ module Vcert
   end
 
   class ZoneConfiguration
-    attr_reader :country, :province, :locality, :organization, :organizational_unit, :key_type
+    attr_reader :country, :province, :locality, :organization, :organizational_unit, :key_type, :app_id, :cit_id;
+    attr_accessor :app_id, :cit_id
 
     # @param [CertField] country
     # @param [CertField] province
