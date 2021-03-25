@@ -238,7 +238,7 @@ class Vcert::TokenConnection
       url = "https://#{url}"
     end
     url += '/' unless url.end_with?('/')
-    raise Vcert::ClientBadDataError, 'Invalid URL for TPP' unless url =~ %r{^https://[a-z\d]+[-a-z\d.]+[a-z\d][:\d]*/$}
+    raise Vcert::ClientBadDataError, 'Invalid URL for TPP' unless url =~ %r{^https://[A-Za-z\d]+[-A-Za-z\d.]+[A-Za-z\d][:\d]*/$}
 
     url
   end

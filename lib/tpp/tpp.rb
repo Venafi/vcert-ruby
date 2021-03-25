@@ -183,7 +183,7 @@ class Vcert::TPPConnection
     unless url.end_with?('/vedsdk/')
       url = url + 'vedsdk/'
     end
-    unless url =~ /^https:\/\/[a-z\d]+[-a-z\d.]+[a-z\d][:\d]*\/vedsdk\/$/
+    unless url =~ /^https:\/\/[A-Za-z\d]+[-A-Za-z\d.]+[A-Za-z\d][:\d]*\/vedsdk\/$/
       raise Vcert::ClientBadDataError, "Invalid URL for TPP"
     end
     url
